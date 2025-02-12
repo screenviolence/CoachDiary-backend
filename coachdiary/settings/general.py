@@ -6,7 +6,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-wlh&f3pa&u*pnu6z-zm0!jxf&grh#e3u-+fc%!_nmcj=e4ta1#'
 
-ALLOWED_HOSTS = ["127.0.0.1", "0.0.0.0", "coachdiary.ru"]
+ALLOWED_HOSTS = ["127.0.0.1", "0.0.0.0"]
 
 # Application definition
 
@@ -67,5 +67,5 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOWED_ORIGINS = ["https://coachdiary.ru", "http://127.0.0.1:8000", "http://127.0.0.1:80", "http://127.0.0.1:8888"]
+CORS_ALLOWED_ORIGINS = ["http://127.0.0.1:8000", "http://127.0.0.1:80", "http://127.0.0.1:8888"]
 CORS_ALLOW_CREDENTIALS = True
