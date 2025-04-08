@@ -1,12 +1,9 @@
-import json
-
 from django.contrib.auth import authenticate, login, logout
 from django.middleware.csrf import get_token
 from drf_spectacular.utils import extend_schema
 from rest_framework import response, status, views, viewsets, mixins, permissions
 from rest_framework.exceptions import ValidationError
-from users import models
-from django.contrib.auth.hashers import check_password
+
 
 from users.api.serializers import UserSerializer, UserCreateSerializer, ChangePasswordSerializer, \
     ChangeUserDetailsSerializer

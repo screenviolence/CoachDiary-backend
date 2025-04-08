@@ -14,6 +14,7 @@ drf-spectacular = "^0.28.0"
 django-cors-headers = "^4.7.0"
 django-extensions = "^4.0"
 django-soft-delete = "^1.0.18"
+djangorestframework-simplejwt = "^5.5.0"
 
 
 [build-system]

@@ -2,6 +2,8 @@ from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
                                         PermissionsMixin)
 from django.db import models
 
+from common.models import BaseModel
+
 
 class LowerCaseEmailField(models.EmailField):
     """Custom email field to provide case insensitive email."""
@@ -58,7 +60,7 @@ class UserManager(BaseUserManager):
         return user
 
 
-class User(AbstractBaseUser, PermissionsMixin):
+class User(AbstractBaseUser, BaseModel, PermissionsMixin):
     """Custom user model.
 
     It is used to provide login via email instead of username as username will
