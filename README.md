@@ -21,7 +21,7 @@
 git clone https://github.com/screenviolence/CoachDiary-backend.git
 cd CoachDiary-backend
 ```
-## 2. Создайте файл .env в корне проекта с переменными окружения:
+### 2. Создайте файл .env в корне проекта с переменными окружения:
 ```
 DJANGO_SECRET_KEY=ваш_секретный_ключ
 DJANGO_DEBUG=True
@@ -34,24 +34,24 @@ DB_PORT=5432
 ```
 ⚠️ Проект использует PostgreSQL, убедитесь, что база данных установлена и доступна по указанным данным.
 
-3. Установите менеджер зависимостей Poetry:
+### 3. Установите менеджер зависимостей Poetry:
 ```
 pip install poetry
 ```
 Или воспользуйтесь [официальной инструкцией](https://python-poetry.org/docs/).
 
-4. Установите зависимости и активируйте виртуальное окружение:
+### 4. Установите зависимости и активируйте виртуальное окружение:
 ```
 poetry install
 Invoke-Expression (poetry env activate)
 ```
-5. Выполните миграции:
+### 5. Выполните миграции:
 ```
 python manage.py makemigrations
 python manage.py migrate
 ```
 
-6. Запустите сервер разработки Django:
+### 6. Запустите сервер разработки Django:
 ```
 python manage.py runserver
 ```
