@@ -88,6 +88,21 @@ files = [
 django = ">=4.2"
 
 [[package]]
+name = "django-filter"
+version = "25.1"
+description = "Django-filter is a reusable Django application for allowing users to filter querysets dynamically."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "django_filter-25.1-py3-none-any.whl", hash = "sha256:4fa48677cf5857b9b1347fed23e355ea792464e0fe07244d1fdfb8a806215b80"},
+    {file = "django_filter-25.1.tar.gz", hash = "sha256:1ec9eef48fa8da1c0ac9b411744b16c3f4c31176c867886e4c48da369c407153"},
+]
+
+[package.dependencies]
+Django = ">=4.2"
+
+[[package]]
 name = "django-soft-delete"
 version = "1.0.18"
 description = "Soft delete models, managers, queryset for Django"
@@ -529,4 +544,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "0e578f96ce663303e9ede09a16b368d15a8968e05a069cb89c7f621a57c1c6a5"
+content-hash = "61d5ca55a82c3e398c86c77c45d02d24564e94472839efc7ca70d13e904627d5"

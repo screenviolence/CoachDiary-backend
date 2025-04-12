@@ -1,15 +1,16 @@
+import uuid
+
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.utils import timezone
 import datetime
-import logging
-
 from common.models import (
     BaseModel,
     GenderChoices,
 )
-from standards.models import Level, Standard
 from users.models import User
 
 
@@ -41,7 +42,7 @@ class StudentClass(BaseModel):
     )
 
     @property
-    def recruitment_year(self):
+    def recruitment_year(self) -> int:
         """Вычисляет год набора класса"""
         current_year = timezone.now().year
         return current_year - self.number
@@ -52,6 +53,10 @@ class StudentClass(BaseModel):
                 "Год набора не может быть позднее текущего года.",
             )
 
+    def save(self, *args, **kwargs):
+        self.class_name = self.class_name.upper()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.number}{self.class_name}"
 
@@ -59,18 +64,15 @@ class StudentClass(BaseModel):
         verbose_name = "Класс"
         verbose_name_plural = "Классы"
         ordering = ['number', 'class_name']
-        unique_together = ['number', 'class_name']
 
 
 class Student(BaseModel):
     """
     Модель ученика.
     """
-    full_name = models.CharField(
-        max_length=255,
-        verbose_name="Полное имя ученика",
-        help_text="Петров Петр Петрович",
-    )
+    first_name = models.CharField(max_length=255, blank=False)
+    last_name = models.CharField(max_length=255, blank=False)
+    patronymic = models.CharField(max_length=255, blank=True)
     student_class = models.ForeignKey(
         StudentClass,
         on_delete=models.CASCADE,
@@ -85,7 +87,6 @@ class Student(BaseModel):
         choices=GenderChoices,
         verbose_name="Пол ученика",
     )
-    # Возможность связать ученика с пользователем системы
     user = models.OneToOneField(
         User,
         on_delete=models.SET_NULL,
@@ -94,13 +95,19 @@ class Student(BaseModel):
         verbose_name="Учетная запись ученика",
     )
 
+    @property
+    def full_name(self):
+        if self.patronymic:
+            return f"{self.first_name} {self.last_name} {self.patronymic}"
+        return f"{self.first_name} {self.last_name}"
+
     def __str__(self):
         return f"Ученик {self.full_name} ({self.birthday.strftime('%d.%m.%Y')} г.р.), {self.student_class}"
 
     class Meta:
         verbose_name = "Ученик"
         verbose_name_plural = "Ученики"
-        ordering = ['student_class', 'full_name']
+        ordering = ['student_class']
 
 
 class Invitation(BaseModel):
@@ -134,81 +141,16 @@ class Invitation(BaseModel):
         verbose_name_plural = "Приглашения"
 
 
-class StudentStandard(BaseModel):
-    """
-    Результаты выполнения нормативов учениками.
-    """
-    student = models.ForeignKey(
-        Student,
-        on_delete=models.CASCADE,
-        related_name="standards",
-        verbose_name="Ученик",
-    )
-    standard = models.ForeignKey(
-        Standard,
-        on_delete=models.CASCADE,
-        related_name="results",
-        verbose_name="Норматив",
-    )
-    grade = models.IntegerField(
-        verbose_name="Оценка",
-        validators=[MinValueValidator(2), MaxValueValidator(5)]
-    )
-    value = models.FloatField(
-        verbose_name="Значение",
-    )
-    level = models.ForeignKey(
-        Level,
-        on_delete=models.CASCADE,
-        verbose_name="Уровень",
-        null=True,
-        blank=True,
-    )
-    date_recorded = models.DateField(
-        default=timezone.now,
-        verbose_name="Дата записи"
-    )
-    teacher = models.ForeignKey(
-        User,
-        on_delete=models.PROTECT,
-        verbose_name="Учитель, записавший результат",
-        limit_choices_to={'role__in': ['teacher', 'admin']},
-    )
-
-    def save(self, *args, **kwargs):
-        # Округляем оценку до целого, если это дробное число
-        if isinstance(self.grade, float):
-            self.grade = round(self.grade)
-
-        # Получаем класс ученика
-        student_class_number = self.student.student_class.number
-
-        # Пытаемся найти соответствующий уровень
-        try:
-            self.level = Level.objects.get(
-                standard=self.standard,
-                level_number=student_class_number,
-                gender=self.student.gender,
+@receiver(post_save, sender=Student)
+def create_invitation(sender, instance, created, **kwargs):
+    """Создает приглашение для нового студента."""
+    if created:  # Только при создании нового студента
+        # Проверяем, есть ли уже приглашение
+        if not hasattr(instance, 'invitation'):
+            # Генерируем уникальный код
+            invite_code = uuid.uuid4().hex[:8].upper()
+            Invitation.objects.create(
+                student=instance,
+                invite_code=invite_code,
+                is_used=False
             )
-        except Level.DoesNotExist:
-            logging.warning(
-                f"Уровень для норматива '{self.standard.name}', класса {student_class_number} "
-                f"и пола '{self.student.get_gender_display()}' не найден."
-            )
-            self.level = None
-        except Exception as e:
-            logging.error(f"Непредвиденная ошибка при сохранении результата: {e}")
-            self.level = None
-
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return (
-            f"{self.student.full_name} - {self.standard.name}: "
-            f"{self.value} ({self.grade})"
-        )
-
-    class Meta:
-        verbose_name = "Результат ученика"
-        verbose_name_plural = "Результаты учеников"
-        ordering = ['-date_recorded', 'student']

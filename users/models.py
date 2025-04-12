@@ -20,7 +20,8 @@ class LowerCaseEmailField(models.EmailField):
 class UserManager(BaseUserManager):
     """Custom user manager which provides correct creation of superuser."""
 
-    def build_user(self, email: str, password: str, first_name: str, last_name: str, patronymic: str = None) -> "User":
+    def build_user(self, email: str, password: str, first_name: str, last_name: str, patronymic: str = None,
+                   role: str = None) -> "User":
         if email is None:
             raise TypeError("Нужно указать эл. почту")
 
@@ -38,19 +39,23 @@ class UserManager(BaseUserManager):
         if patronymic:
             user.patronymic = patronymic
 
+        if role:
+            user.role = role
+
         user.set_password(password)
 
         return user
 
-    def create_user(self, email: str, password: str, first_name: str, last_name: str, patronymic: str = None) -> "User":
-        user = self.build_user(email, password, first_name, last_name, patronymic)
+    def create_user(self, email: str, password: str, first_name: str, last_name: str, patronymic: str = None,
+                    role: str = None) -> "User":
+        user = self.build_user(email, password, first_name, last_name, patronymic, role)
         user.save()
         return user
 
     def create_superuser(self, email: str, password: str, first_name: str, last_name: str,
                          patronymic: str = None) -> "User":
         if password is None:
-            raise TypeError('Superusers must have a password.')
+            raise TypeError('У администратора должен быть пароль.')
 
         user = self.build_user(email, password, first_name, last_name, patronymic)
         user.is_superuser = True
@@ -86,9 +91,6 @@ class User(AbstractBaseUser, BaseModel, PermissionsMixin):
 
     @property
     def full_name(self):
-        """
-        Возвращает полное имя пользователя, включая отчество, если оно указано.
-        """
         if self.patronymic:
             return f"{self.first_name} {self.last_name} {self.patronymic}"
         return f"{self.first_name} {self.last_name}"

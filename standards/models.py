@@ -1,7 +1,10 @@
-from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator
+import logging
 
-from common.models import AbstractLevel, AbstractStandard
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.utils import timezone
+
+from common.models import AbstractLevel, AbstractStandard, BaseModel
 from django.db import models
 
 from users.models import User
@@ -29,33 +32,38 @@ class Level(AbstractLevel):
     """
     Уровень норматива для определенного класса.
     """
-    low_value = models.FloatField(
-        validators=(
-            MinValueValidator(0),
-        ),
-        verbose_name="Минимальное значение для уровня",
-        null=True, blank=True
-    )
-    middle_value = models.FloatField(
-        validators=(
-            MinValueValidator(0),
-        ),
-        verbose_name="Среднее значение для уровня",
-        null=True, blank=True
-    )
-    high_value = models.FloatField(
-        validators=(
-            MinValueValidator(0),
-        ),
-        verbose_name="Лучшее значение для уровня",
-        null=True, blank=True
-    )
     standard = models.ForeignKey(
         Standard,
         on_delete=models.CASCADE,
         related_name="levels",
         verbose_name="Норматив",
     )
+
+    def calculate_grade(self, value):
+        """
+        Рассчитывает оценку на основе полученного значения.
+        """
+        if not self.standard.has_numeric_value:
+            return value
+
+        if not self.is_lower_better:
+            if value >= self.high_value:
+                return '5'
+            elif value >= self.middle_value:
+                return '4'
+            elif value >= self.low_value:
+                return '3'
+            else:
+                return '2'
+        else:
+            if value <= self.high_value:
+                return '5'
+            elif value <= self.middle_value:
+                return '4'
+            elif value <= self.low_value:
+                return '3'
+            else:
+                return '2'
 
     def clean(self):
         if self.standard.has_numeric_value:
@@ -81,3 +89,74 @@ class Level(AbstractLevel):
 
     def __str__(self):
         return f"Уровень {self.level_number} для {self.standard.name} ({self.get_gender_display()})"
+
+
+class StudentStandard(BaseModel):
+    """
+    Результаты выполнения нормативов учениками.
+    """
+    student = models.ForeignKey(
+        'students.Student',
+        on_delete=models.CASCADE,
+        related_name="standards",
+        verbose_name="Ученик",
+    )
+    standard = models.ForeignKey(
+        Standard,
+        on_delete=models.CASCADE,
+        related_name="results",
+        verbose_name="Норматив",
+    )
+    grade = models.IntegerField(
+        verbose_name="Оценка",
+        validators=[MinValueValidator(2), MaxValueValidator(5)]
+    )
+    value = models.FloatField(
+        verbose_name="Значение",
+    )
+    level = models.ForeignKey(
+        Level,
+        on_delete=models.CASCADE,
+        verbose_name="Уровень",
+        null=True,
+        blank=True,
+    )
+    date_recorded = models.DateField(
+        default=timezone.now,
+        verbose_name="Дата записи"
+    )
+
+    def save(self, *args, **kwargs):
+        if isinstance(self.grade, float):
+            self.grade = round(self.grade)
+
+        student_class_number = self.student.student_class.number
+
+        try:
+            self.level = Level.objects.get(
+                standard=self.standard,
+                level_number=student_class_number,
+                gender=self.student.gender,
+            )
+        except Level.DoesNotExist:
+            logging.warning(
+                f"Уровень для норматива '{self.standard.name}', класса {student_class_number} "
+                f"и пола '{self.student.get_gender_display()}' не найден."
+            )
+            self.level = None
+        except Exception as e:
+            logging.error(f"Непредвиденная ошибка при сохранении результата: {e}")
+            self.level = None
+
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return (
+            f"{self.student.full_name} - {self.standard.name}: "
+            f"{self.value} ({self.grade})"
+        )
+
+    class Meta:
+        verbose_name = "Результат ученика"
+        verbose_name_plural = "Результаты учеников"
+        ordering = ['-date_recorded', 'student']

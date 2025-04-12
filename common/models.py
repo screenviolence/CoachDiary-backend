@@ -6,12 +6,8 @@ from django_softdelete.models import SoftDeleteModel
 
 class BaseModel(SoftDeleteModel, models.Model):
     """
-    Общая базовая модель с UUID и датой создания.
-    Можно расширить при необходимости (updated_at, soft-delete и т.д.).
+    Общая базовая модель.
     """
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-
     class Meta:
         abstract = True
 
@@ -26,8 +22,8 @@ class AbstractStandard(BaseModel):
     Базовая модель для стандартов/нормативов
     """
     has_numeric_value = models.BooleanField(
-        verbose_name="Является ли это умением или нормативом",
-        help_text="Если True, то это умение. Иначе - норматив",
+        verbose_name="Является ли это физическим или техническим нормативом",
+        help_text="Если True, то это физический норматив. Иначе - технический",
     )
     name = models.CharField(max_length=255, verbose_name="Название")
     description = models.TextField(blank=True, verbose_name="Описание")
@@ -51,6 +47,32 @@ class AbstractLevel(BaseModel):
         max_length=1,
         choices=GenderChoices,
         verbose_name="Пол"
+    )
+    low_value = models.FloatField(
+        validators=(
+            MinValueValidator(0),
+        ),
+        verbose_name="Минимальное значение для уровня",
+        null=True, blank=True
+    )
+    middle_value = models.FloatField(
+        validators=(
+            MinValueValidator(0),
+        ),
+        verbose_name="Среднее значение для уровня",
+        null=True, blank=True
+    )
+    high_value = models.FloatField(
+        validators=(
+            MinValueValidator(0),
+        ),
+        verbose_name="Лучшее значение для уровня",
+        null=True, blank=True
+    )
+    is_lower_better = models.BooleanField(
+        default=False,
+        verbose_name="Чем меньше, тем лучше",
+        help_text="Если отмечено, то меньшее значение считается лучшим (например, для времени)"
     )
 
     class Meta:

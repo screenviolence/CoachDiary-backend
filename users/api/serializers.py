@@ -23,6 +23,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, style={'input_type': 'password'})
     confirm_password = serializers.CharField(write_only=True, style={'input_type': 'password'})
     patronymic = serializers.CharField(required=False, allow_blank=True)
+    role = serializers.CharField(required=False, read_only=True)
 
     class Meta:
         model = models.User
@@ -32,12 +33,13 @@ class UserCreateSerializer(serializers.ModelSerializer):
             'confirm_password',
             'first_name',
             'last_name',
-            'patronymic'
+            'patronymic',
+            'role'
         ]
 
     def validate(self, data):
         if data['password'] != data['confirm_password']:
-            raise serializers.ValidationError("Passwords do not match.")
+            raise serializers.ValidationError("Пароли не совпадают.")
         return data
 
     def create(self, validated_data):
@@ -48,13 +50,18 @@ class UserCreateSerializer(serializers.ModelSerializer):
         first_name = validated_data.pop('first_name')
         last_name = validated_data.pop('last_name')
         patronymic = validated_data.pop('patronymic', None)
+        role = 'teacher'
+
+        if self.context.get('invitation_registration'):
+            role = 'student'
 
         user = models.User.objects.create_user(
             email=email,
             password=password,
             first_name=first_name,
             last_name=last_name,
-            patronymic=patronymic
+            patronymic=patronymic,
+            role=role
         )
 
         return user
@@ -75,14 +82,20 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 class ChangeUserDetailsSerializer(serializers.Serializer):
     email = serializers.EmailField(required=False)
-    name = serializers.CharField(required=False)
+    first_name = serializers.CharField(required=False)
+    last_name = serializers.CharField(required=False)
+    patronymic = serializers.CharField(required=False)
 
     def validate_email(self, value):
         if models.User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("This email is already in use.")
+            raise serializers.ValidationError("Эта эл. почта уже используется")
         return value
 
     def validate(self, data):
-        if not data.get('email') and not data.get('name'):
-            raise serializers.ValidationError("At least one field (email or name) must be provided.")
+        if not data.get('email'):
+            raise serializers.ValidationError("Нужно указать эл. почту.")
+        if not data.get('first_name'):
+            raise serializers.ValidationError("Нужно указать имя")
+        if not data.get('last_name'):
+            raise serializers.ValidationError("Нужно указать фамилию")
         return data
