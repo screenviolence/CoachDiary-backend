@@ -13,6 +13,7 @@ class LevelSerializer(serializers.ModelSerializer):
         model = models.Level
         fields = (
             "id",
+            "is_lower_better",
             "level_number",
             "low_value",
             "middle_value",
@@ -126,7 +127,6 @@ class StudentResultSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         representation = super().to_representation(instance)
 
-        # Include levels for each student standard
         if representation.get('student_standards'):
             levels = []
             for standard in representation['student_standards']:
