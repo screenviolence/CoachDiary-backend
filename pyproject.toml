@@ -16,6 +16,8 @@ django-extensions = "^4.0"
 django-soft-delete = "^1.0.18"
 djangorestframework-simplejwt = "^5.5.0"
 django-filter = "^25.1"
+djangorestframework-oauth = "^1.1.0"
+django-oauth-toolkit = "^3.0.1"
 
 
 [build-system]

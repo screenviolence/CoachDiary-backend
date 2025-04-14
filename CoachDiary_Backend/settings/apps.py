@@ -8,6 +8,7 @@ DJANGO_APPS = [
 ]
 
 LOCAL_APPS = [
+    'CoachDiary_Backend',
     'users.apps.UsersConfig',
     'students.apps.StudentsConfig',
     'standards.apps.StandardsConfig',
@@ -16,6 +17,7 @@ LOCAL_APPS = [
 
 EXTERNAL_APPS = [
     'rest_framework',
+    'oauth2_provider',
     'corsheaders',
     'django_extensions',
     'drf_spectacular',
