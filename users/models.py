@@ -55,11 +55,6 @@ class UserManager(BaseUserManager):
     def create_superuser(self, email: str, password: str, first_name: str, last_name: str,
                          patronymic: str = None) -> "User":
 
-        if first_name is None:
-            first_name = "Admin"
-        if last_name is None:
-            last_name = "User"
-
         if password is None:
             raise TypeError('У администратора должен быть пароль.')
 
