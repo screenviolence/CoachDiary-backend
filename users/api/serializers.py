@@ -81,10 +81,20 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 
 class ChangeUserDetailsSerializer(serializers.Serializer):
-    email = serializers.EmailField(required=False)
     first_name = serializers.CharField(required=False)
     last_name = serializers.CharField(required=False)
-    patronymic = serializers.CharField(required=False)
+    patronymic = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, data):
+        if not data.get('first_name'):
+            raise serializers.ValidationError("Нужно указать имя")
+        if not data.get('last_name'):
+            raise serializers.ValidationError("Нужно указать фамилию")
+        return data
+
+
+class ChangeUserEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
 
     def validate_email(self, value):
         if models.User.objects.filter(email=value).exists():
@@ -94,8 +104,4 @@ class ChangeUserDetailsSerializer(serializers.Serializer):
     def validate(self, data):
         if not data.get('email'):
             raise serializers.ValidationError("Нужно указать эл. почту.")
-        if not data.get('first_name'):
-            raise serializers.ValidationError("Нужно указать имя")
-        if not data.get('last_name'):
-            raise serializers.ValidationError("Нужно указать фамилию")
         return data

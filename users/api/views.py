@@ -3,13 +3,14 @@ from django.db import transaction
 from django.middleware.csrf import get_token
 from drf_spectacular.utils import extend_schema
 from rest_framework import response, status, viewsets, mixins, permissions
+from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
 from students.models import Invitation
 from users.api.serializers import UserSerializer, UserCreateSerializer, ChangePasswordSerializer, \
-    ChangeUserDetailsSerializer
+    ChangeUserDetailsSerializer, ChangeUserEmailSerializer
 
 
 class UserLoginView(viewsets.ViewSet):
@@ -58,7 +59,6 @@ class UserLoginView(viewsets.ViewSet):
 class UserViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = UserCreateSerializer
 
-
 class UserProfileViewSet(viewsets.GenericViewSet):
     """ Работа с профилем пользователя. """
     serializer_class = UserSerializer
@@ -75,8 +75,10 @@ class UserProfileViewSet(viewsets.GenericViewSet):
         return response.Response(serializer.data, status=status.HTTP_200_OK)
 
     @extend_schema(
-        summary="Смена пароля пользователя"
+        summary="Смена пароля пользователя",
+        request=ChangePasswordSerializer,
     )
+    @action(detail=False, methods=['put'])
     def change_password(self, request):
         serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
@@ -86,22 +88,37 @@ class UserProfileViewSet(viewsets.GenericViewSet):
         return response.Response({"успех": "Пароль успешно установлен"}, status=status.HTTP_200_OK)
 
     @extend_schema(
-        summary="Смена эл. почты и/или ФИО",
+        summary="Смена ФИО",
         request=ChangeUserDetailsSerializer,
-        responses={200: UserSerializer}
+        responses={200: UserSerializer},
     )
+    @action(detail=False, methods=['patch'])
     def change_details(self, request):
         serializer = ChangeUserDetailsSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         user = request.user
-        if 'email' in serializer.validated_data:
-            user.email = serializer.validated_data['email']
         if 'first_name' in serializer.validated_data:
-            user.first_name = serializer.validated_data['name']
+            user.first_name = serializer.validated_data['first_name']
         if 'last_name' in serializer.validated_data:
-            user.last_name = serializer.validated_data['name']
+            user.last_name = serializer.validated_data['last_name']
         if 'patronymic' in serializer.validated_data:
             user.patronymic = serializer.validated_data['patronymic']
+
+        user.save()
+        return response.Response({"успех": "Данные пользователя успешно обновлены"}, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Cмена эл. почты",
+        request=ChangeUserEmailSerializer,
+        responses={200: UserSerializer},
+    )
+    @action(detail=False, methods=['patch'])
+    def change_email(self, request):
+        serializer = ChangeUserEmailSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        if 'email' in serializer.validated_data and serializer.validated_data['email'] != user.email:
+            user.email = serializer.validated_data['email']
 
         user.save()
         return response.Response({"успех": "Данные пользователя успешно обновлены"}, status=status.HTTP_200_OK)
