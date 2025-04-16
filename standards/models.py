@@ -84,7 +84,6 @@ class Level(AbstractLevel):
     class Meta:
         verbose_name = "Уровень норматива"
         verbose_name_plural = "Уровни нормативов"
-        unique_together = ['standard', 'level_number', 'gender']
         ordering = ['standard', 'level_number']
 
     def __str__(self):

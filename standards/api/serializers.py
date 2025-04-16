@@ -1,9 +1,7 @@
-from rest_framework import serializers, exceptions
-from rest_framework.exceptions import ValidationError
+from rest_framework import serializers
 
 from students.api.serializers import FullClassNameSerializer
 from students.models import Student
-from users.api.serializers import UserSerializer
 
 from .. import models
 

@@ -1,4 +1,5 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework import routers
 
 from .views import UserLoginView, UserViewSet, UserProfileViewSet, UserLogoutView, JoinByInvitationView
 
@@ -7,16 +8,16 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
+user_router = routers.DefaultRouter()
+user_router.register(r'login', UserLoginView, basename='user-login')
+user_router.register(r'create-user', UserViewSet, basename='user-create')
+user_router.register(r'profile', UserProfileViewSet, basename='user-profile')
+user_router.register(r'logout', UserLogoutView, basename='user-logout')
+user_router.register(r'create-user/from-invitation', JoinByInvitationView, basename='create-user-from-invitation')
+
 urlpatterns = [
-    path("login/", UserLoginView.as_view({'get': 'get', 'post': 'post'}), name="UserLogin"),
-    path("create-user/", UserViewSet.as_view({"post": "create"}), name="UserCreate"),
-    path("profile/", UserProfileViewSet.as_view({'get': 'list', 'put': 'change_password', 'patch': 'change_details'}),
-         name="UserProfile"),
-    path("logout/", UserLogoutView.as_view({'post': 'logout'}), name="UserLogout"),
+    path("", include(user_router.urls)),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('create-user/from-invitation/<str:invite_code>/',
-         JoinByInvitationView.as_view({'get': 'list', 'post': 'create'}),
-         name='create_user_from_invitation'),
 
 ]

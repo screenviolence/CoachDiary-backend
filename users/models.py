@@ -93,8 +93,8 @@ class User(AbstractBaseUser, BaseModel, PermissionsMixin):
     @property
     def full_name(self):
         if self.patronymic:
-            return f"{self.first_name} {self.last_name} {self.patronymic}"
-        return f"{self.first_name} {self.last_name}"
+            return f"{self.last_name} {self.first_name} {self.patronymic}"
+        return f"{self.last_name} {self.first_name}"
 
     def __str__(self):
         return self.full_name

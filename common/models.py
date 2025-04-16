@@ -1,6 +1,5 @@
 from django.core.validators import MinValueValidator
 from django.db import models
-import uuid
 from django_softdelete.models import SoftDeleteModel
 
 

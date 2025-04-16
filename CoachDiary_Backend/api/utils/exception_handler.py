@@ -6,8 +6,8 @@ def custom_exception_handler(exc, context):
 
     if response is not None:
         response.data = {
-            "Статус": "Произошла ошибка",
-            "Детали": response.data,
+            "status": "Произошла ошибка",
+            "details": response.data,
         }
 
     return response
