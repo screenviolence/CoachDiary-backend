@@ -15,11 +15,12 @@ from users.api.serializers import UserSerializer, UserCreateSerializer, ChangePa
 
 class UserLoginView(viewsets.ViewSet):
 
-    def get(self, request):
+    def list(self, request):
         """ Получение CSRF токена. """
         return response.Response({"csrf": get_token(request)})
 
-    def post(self, request):
+    @action(detail=False, methods=['post'])
+    def session_login(self, request):
         """ Вход пользователя. """
         email = request.data.get("email")
         password = request.data.get("password")

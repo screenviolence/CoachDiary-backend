@@ -9,7 +9,7 @@ from rest_framework_simplejwt.views import (
 )
 
 user_router = routers.DefaultRouter()
-user_router.register(r'login', UserLoginView, basename='user-login')
+user_router.register(r'login', UserLoginView, basename='login')
 user_router.register(r'create-user', UserViewSet, basename='user-create')
 user_router.register(r'profile', UserProfileViewSet, basename='user-profile')
 user_router.register(r'logout', UserLogoutView, basename='user-logout')
