@@ -1,4 +1,6 @@
 from django.db import transaction
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import mixins, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -23,12 +25,77 @@ class StandardValueViewSet(
         IsTeacher,
     )
 
+    @extend_schema(
+        description="Удаляет уровни норматива для указанного номера класса (для обоих полов)",
+        parameters=[
+            OpenApiParameter(
+                name='level_number',
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description='Номер уровня (класса), для которого нужно удалить норматив',
+                required=True
+            ),
+        ]
+    )
+    @action(detail=True, methods=['delete'])
+    def remove_level(self, request, pk=None):
+        standard = self.get_object()
+        level_number = request.query_params.get('level_number')
+
+        if not level_number:
+            return Response(
+                {"detail": "Необходимо указать параметр level_number"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        levels_to_delete = standard.levels.filter(level_number=level_number)
+
+        if levels_to_delete.exists():
+            deleted_count = levels_to_delete.count()
+            levels_to_delete.delete()
+            return Response(
+                {"detail": f"Удалено уровней: {deleted_count}"},
+                status=status.HTTP_204_NO_CONTENT
+            )
+        else:
+            return Response(
+                {"detail": f"Уровни с номером {level_number} не найдены для данного норматива"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
     def get_queryset(self):
         user = self.request.user
         return models.Standard.objects.filter(who_added_id=user.id)
 
     def perform_create(self, serializer):
-        serializer.save(who_added_id=self.request.user.id)
+        """
+        Проверяет существование норматива с таким же именем.
+        Если норматив существует, добавляет к нему новые уровни вместо создания нового.
+        """
+        standard_data = serializer.validated_data
+        standard_name = standard_data.get('name')
+
+        existing_standard = models.Standard.objects.filter(name=standard_name).first()
+
+        if existing_standard:
+            levels_data = standard_data.get('levels', [])
+
+            for level_data in levels_data:
+                level_exists = models.Level.objects.filter(
+                    standard=existing_standard,
+                    level_number=level_data.get('level_number'),
+                    gender=level_data.get('gender')
+                ).exists()
+
+                if not level_exists:
+                    models.Level.objects.create(
+                        standard=existing_standard,
+                        **level_data
+                    )
+
+            return existing_standard
+        else:
+            serializer.save(who_added_id=self.request.user.id)
 
 
 class StudentStandardsViewSet(viewsets.ViewSet):
