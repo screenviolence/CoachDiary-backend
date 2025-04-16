@@ -2,10 +2,9 @@ from django.contrib.auth import authenticate, login, logout
 from django.db import transaction
 from django.middleware.csrf import get_token
 from drf_spectacular.utils import extend_schema
-from rest_framework import response, status, views, viewsets, mixins, permissions
+from rest_framework import response, status, viewsets, mixins, permissions
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
-from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from students.models import Invitation

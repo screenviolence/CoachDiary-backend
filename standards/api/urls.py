@@ -10,8 +10,7 @@ standards_router.register(r"students/(?P<student_id>\d+)/standards",
                           basename="student-standards")
 standards_router.register(r'students/results', views.StudentsResultsViewSet, basename='students-results')
 
-standards_router.register(r'students/results/new',
-                          views.StudentResultsCreateOrUpdateViewSet,
+standards_router.register(r'students/results/new', views.StudentResultsCreateOrUpdateViewSet,
                           basename='students-results-create')
 
 urlpatterns = [

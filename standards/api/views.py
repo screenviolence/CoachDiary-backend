@@ -6,7 +6,8 @@ from rest_framework.response import Response
 from students.models import Student
 from common.permissions import IsTeacher
 from standards import models
-from .serializers import StudentResultSerializer, StandardSerializer, StudentStandardCreateSerializer
+from .serializers import StudentResultSerializer, StandardSerializer, StudentStandardCreateSerializer, \
+    StudentStandardSerializer
 
 
 class StandardValueViewSet(
@@ -32,6 +33,7 @@ class StandardValueViewSet(
 
 class StudentStandardsViewSet(viewsets.ViewSet):
     permission_classes = (IsTeacher,)
+    serializer_class = StudentStandardSerializer
 
     def list(self, request, student_id=None):
         try:
@@ -83,9 +85,10 @@ class StudentsResultsViewSet(mixins.ListModelMixin, viewsets.ViewSet):
 
 class StudentResultsCreateOrUpdateViewSet(viewsets.ViewSet):
     permission_classes = (IsTeacher,)
+    serializer_class = StudentStandardCreateSerializer
 
     @transaction.atomic
-    def create_or_update(self, request, *args, **kwargs):
+    def create(self, request, *args, **kwargs):
         data = request.data
 
         if not isinstance(data, list):
