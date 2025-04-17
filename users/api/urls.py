@@ -12,7 +12,7 @@ user_router = routers.DefaultRouter()
 user_router.register(r'login', UserLoginView, basename='login')
 user_router.register(r'create-user', UserViewSet, basename='user-create')
 user_router.register(r'profile', UserProfileViewSet, basename='user-profile')
-user_router.register(r'logout', UserLogoutView, basename='user-logout')
+user_router.register(r'', UserLogoutView, basename='user-logout')
 user_router.register(r'create-user/from-invitation', JoinByInvitationView, basename='create-user-from-invitation')
 
 urlpatterns = [

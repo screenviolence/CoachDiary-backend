@@ -131,6 +131,7 @@ class UserLogoutView(viewsets.ViewSet):
     @extend_schema(
         summary="Выполнение выхода из аккаунта"
     )
+    @action(detail=False, methods=['post'])
     def logout(self, request):
         """Выполнение выхода из аккаунта."""
         logout(request)
