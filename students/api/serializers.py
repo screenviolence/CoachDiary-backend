@@ -42,10 +42,20 @@ class FullClassNameSerializer(serializers.ModelSerializer):
 
 class StudentSerializer(serializers.ModelSerializer):
     student_class = StudentClassSerializer()
+    invitation_link = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Student
-        fields = ("id", "first_name", "last_name", "patronymic", "full_name", "student_class", "birthday", "gender")
+        fields = ("id", "first_name", "last_name", "patronymic", "full_name", "student_class", "birthday", "gender",
+                  "invitation_link")
+
+    def get_invitation_link(self, obj):
+        try:
+            if hasattr(obj, 'invitation'):
+                return obj.invitation.get_join_link()
+            return None
+        except:
+            return None
 
     def create(self, validated_data):
         student_class_data = validated_data.pop('student_class')

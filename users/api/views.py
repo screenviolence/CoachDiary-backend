@@ -1,3 +1,6 @@
+import uuid
+from datetime import timedelta
+
 from django.contrib.auth import authenticate, login, logout
 from django.db import transaction
 from django.middleware.csrf import get_token
@@ -7,10 +10,13 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
+from rest_framework.utils import timezone
 
 from students.models import Invitation
+from users import models
 from users.api.serializers import UserSerializer, UserCreateSerializer, ChangePasswordSerializer, \
     ChangeUserDetailsSerializer, ChangeUserEmailSerializer
+from users.utils import send_verification_email, send_password_reset_email
 
 
 class UserLoginView(viewsets.ViewSet):
@@ -59,6 +65,21 @@ class UserLoginView(viewsets.ViewSet):
 
 class UserViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = UserCreateSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        user.verification_token = uuid.uuid4()
+        user.save()
+
+        send_verification_email(user)
+
+        return Response({
+            'message': 'Регистрация успешна. Проверьте вашу почту для подтверждения аккаунта.'
+        }, status=status.HTTP_201_CREATED)
+
 
 class UserProfileViewSet(viewsets.GenericViewSet):
     """ Работа с профилем пользователя. """
@@ -143,6 +164,81 @@ class UserLogoutView(viewsets.ViewSet):
         )
 
 
+class PasswordResetViewSet(viewsets.ViewSet):
+    """API для сброса пароля"""
+    permission_classes = (permissions.AllowAny,)
+
+    @extend_schema(
+        summary="Запрос на сброс пароля"
+    )
+    @action(detail=False, methods=['post'])
+    def request_reset(self, request):
+        """Запрос на сброс пароля"""
+        email = request.data.get('email')
+        if not email:
+            return Response(
+                {"ошибка": "Необходимо указать адрес электронной почты"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = models.User.objects.get(email=email)
+            reset_token = uuid.uuid4()
+            user.password_reset_token = reset_token
+            user.password_reset_expires = timezone.datetime.now(tz=timezone.timezone.utc) + timedelta(hours=24)
+            user.save()
+            send_password_reset_email(user)
+
+            return Response(
+                {
+                    "success": "Если данная почта существует, инструкции по сбросу пароля отправлены на указанный адрес электронной почты"},
+                status=status.HTTP_200_OK
+            )
+        except Exception as err:
+            return Response(
+                {
+                    "success": "Если данная почта существует, инструкции по сбросу пароля отправлены на указанный адрес электронной почты"},
+                status=status.HTTP_200_OK
+            )
+
+    @extend_schema(
+        summary="Установка нового пароля"
+    )
+    @action(detail=False, methods=['post'])
+    def confirm_reset(self, request):
+        """Установка нового пароля по токену """
+        token = request.data.get('token')
+        new_password = request.data.get('new_password')
+
+        if not token or not new_password:
+            return Response(
+                {"ошибка": "Необходимо указать токен и новый пароль"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = models.User.objects.get(
+                password_reset_token=token,
+                password_reset_expires__gt=timezone.datetime.now(tz=timezone.timezone.utc)
+            )
+
+            user.set_password(new_password)
+
+            user.password_reset_token = None
+            user.password_reset_expires = None
+            user.save()
+
+            return Response(
+                {"успех": "Пароль успешно изменен. Теперь вы можете войти в систему"},
+                status=status.HTTP_200_OK
+            )
+        except:
+            return Response(
+                {"ошибка": "Недействительный или устаревший токен сброса пароля"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
 class JoinByInvitationView(viewsets.ViewSet):
     """API для присоединения студента по коду приглашения"""
 
@@ -214,3 +310,18 @@ class JoinByInvitationView(viewsets.ViewSet):
             )
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class VerifyEmailView(viewsets.ViewSet):
+    permission_classes = (permissions.AllowAny,)
+
+    def list(self, request, token):
+        try:
+            user = models.User.objects.get(verification_token=token)
+            user.verification_token = None
+            user.is_email_verified = True
+
+            user.save()
+            return Response({'message': 'Email успешно подтвержден'}, status=status.HTTP_200_OK)
+        except:
+            return Response({'error': 'Неверный токен подтверждения'}, status=status.HTTP_400_BAD_REQUEST)

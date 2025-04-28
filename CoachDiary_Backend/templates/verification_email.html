@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <title>Подтверждение электронной почты</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>Подтверждение регистрации</h1>
+    </div>
+
+    <p>Здравствуйте, <strong>{{ username }}</strong>!</p>
+
+    <p>Благодарим вас за регистрацию в сервисе CoachDiary. Для завершения процесса регистрации, пожалуйста, подтвердите
+        ваш адрес электронной почты.</p>
+
+    <p style="text-align: center;">
+        <a href="{{ verification_url }}" class="button">Подтвердить email</a>
+    </p>
+
+    <p>Если кнопка выше не работает, вы можете скопировать и вставить следующую ссылку в адресную строку вашего
+        браузера:</p>
+    <p style="word-break: break-all;">{{ verification_url }}</p>
+
+    <p>Если вы не регистрировались на нашем сайте, просто проигнорируйте это письмо.</p>
+
+    <p>С уважением,<br>Команда CoachDiary</p>
+
+    <div class="footer">
+        <p>Это автоматическое письмо, пожалуйста, не отвечайте на него.</p>
+    </div>
+</div>
+</body>
+</html>

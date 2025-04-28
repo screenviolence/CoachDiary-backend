@@ -89,6 +89,10 @@ class User(AbstractBaseUser, BaseModel, PermissionsMixin):
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='teacher')
     is_superuser = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
+    is_email_verified = models.BooleanField(default=False)
+    verification_token = models.CharField(max_length=100, null=True, blank=True)
+    password_reset_token = models.UUIDField(null=True, blank=True)
+    password_reset_expires = models.DateTimeField(null=True, blank=True)
 
     @property
     def full_name(self):
