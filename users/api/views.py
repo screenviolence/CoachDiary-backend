@@ -110,7 +110,7 @@ class UserProfileViewSet(viewsets.GenericViewSet):
         user = request.user
         user.set_password(serializer.validated_data['new_password'])
         user.save()
-        return response.Response({"успех": "Пароль успешно установлен"}, status=status.HTTP_200_OK)
+        return response.Response({"success": "Пароль успешно установлен"}, status=status.HTTP_200_OK)
 
     @extend_schema(
         summary="Смена ФИО",
@@ -130,7 +130,7 @@ class UserProfileViewSet(viewsets.GenericViewSet):
             user.patronymic = serializer.validated_data['patronymic']
 
         user.save()
-        return response.Response({"успех": "Данные пользователя успешно обновлены"}, status=status.HTTP_200_OK)
+        return response.Response({"success": "Данные пользователя успешно обновлены"}, status=status.HTTP_200_OK)
 
     @extend_schema(
         summary="Cмена эл. почты",
@@ -146,7 +146,7 @@ class UserProfileViewSet(viewsets.GenericViewSet):
             user.email = serializer.validated_data['email']
 
         user.save()
-        return response.Response({"успех": "Данные пользователя успешно обновлены"}, status=status.HTTP_200_OK)
+        return response.Response({"success": "Данные пользователя успешно обновлены"}, status=status.HTTP_200_OK)
 
 
 class UserLogoutView(viewsets.ViewSet):
@@ -160,7 +160,7 @@ class UserLogoutView(viewsets.ViewSet):
         logout(request)
         return response.Response(
             {
-                "status": "успех",
+                "status": "success",
                 "details": "Вы вышли из аккаунта",
             },
             status=status.HTTP_200_OK
@@ -232,7 +232,7 @@ class PasswordResetViewSet(viewsets.ViewSet):
         user.save()
 
         return Response(
-            {"успех": "Пароль успешно изменен. Теперь вы можете войти в систему"},
+            {"success": "Пароль успешно изменен. Теперь вы можете войти в систему"},
             status=status.HTTP_200_OK
         )
 
