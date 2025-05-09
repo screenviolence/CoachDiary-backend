@@ -9,7 +9,7 @@ from students.models import Student
 from common.permissions import IsTeacher
 from standards import models
 from .serializers import StudentResultSerializer, StandardSerializer, StudentStandardCreateSerializer, \
-    StudentStandardSerializer
+    StudentStandardSerializer, StudentStandardsResponseSerializer
 
 
 class StandardValueViewSet(
@@ -31,7 +31,7 @@ class StandardValueViewSet(
             OpenApiParameter(
                 name='level_number',
                 type=OpenApiTypes.INT,
-                location=OpenApiParameter.QUERY,
+                location='query',
                 description='Номер уровня (класса), для которого нужно удалить норматив',
                 required=True
             ),
@@ -100,8 +100,21 @@ class StandardValueViewSet(
 
 class StudentStandardsViewSet(viewsets.ViewSet):
     permission_classes = (IsTeacher,)
-    serializer_class = StudentStandardSerializer
+    serializer_class = StudentStandardsResponseSerializer
 
+    @extend_schema(
+        summary="Результаты ученика по его нормативам",
+        description="Отображает результаты ученика по его нормативам",
+        parameters=[
+            OpenApiParameter(
+                name='level_number',
+                type=OpenApiTypes.INT,
+                location='query',
+                description='Номер уровня (класса), для которого нужно вывести оценки. По умолчанию - текущий класс ученика',
+                required=False
+            ),
+        ]
+    )
     def list(self, request, student_id=None):
         try:
             student = Student.objects.get(id=student_id, student_class__class_owner=request.user)
@@ -110,33 +123,66 @@ class StudentStandardsViewSet(viewsets.ViewSet):
 
         student_standards = models.StudentStandard.objects.filter(student=student)
 
-        response_data = []
-        for student_standard in student_standards:
-            standard_data = {
-                'Standard': {
-                    'Id': student_standard.standard.id,
-                    'Name': student_standard.standard.name,
-                    'Has_numeric_value': student_standard.standard.has_numeric_value
-                },
-                'Level_number': student_standard.level.level_number if student_standard.level else None,
-                'Value': student_standard.value,
-                'Grade': student_standard.grade
-            }
-            response_data.append(standard_data)
+        level_number = request.query_params.get('level_number')
+        if level_number:
+            try:
+                level_number = int(level_number)
+            except ValueError:
+                return Response(
+                    {"detail": "Параметр level_number должен быть числом"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        else:
+            level_number = student.student_class.number
 
-        return Response(response_data)
+        filtered_standards = student_standards.filter(level__level_number=level_number)
+
+        numeric_standards = [s for s in filtered_standards if s.standard.has_numeric_value]
+        if numeric_standards:
+            summary_grade = sum(s.grade for s in numeric_standards) / len(numeric_standards)
+        else:
+            summary_grade = 0
+
+        response_data = {
+            'standards': filtered_standards,
+            'summary_grade': summary_grade,
+            'level_number': level_number
+        }
+
+        serializer = StudentStandardsResponseSerializer(response_data)
+        return Response(serializer.data)
 
 
-class StudentsResultsViewSet(mixins.ListModelMixin, viewsets.ViewSet):
+class StudentsResultsViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     permission_classes = (IsTeacher,)
     serializer_class = StudentResultSerializer
 
+    @extend_schema(
+        summary="Результаты учеников из выбранных классов по выбранному нормативу",
+        description="Отображает результаты учеников из выбранного одного или нескольких классов по выбранному нормативу",
+        parameters=[
+            OpenApiParameter(
+                name='class_id[]',
+                type=OpenApiTypes.INT,
+                location='query',
+                description='Идентификаторы классов, для которых нужно вывести результаты учеников',
+                required=True
+            ),
+            OpenApiParameter(
+                name='standard_id',
+                type=OpenApiTypes.INT,
+                location='query',
+                description='Идентификатор норматива, по которому нужно вывести результаты',
+                required=True
+            )
+        ]
+    )
     def list(self, request, *args, **kwargs):
         class_ids = request.query_params.getlist('class_id[]')
         standard_id = request.query_params.get('standard_id')
 
         if not class_ids or not standard_id:
-            return Response({"detail": "Требуются параметры class_id и standard_id."},
+            return Response({"details": "Требуются параметры class_id и standard_id."},
                             status=status.HTTP_400_BAD_REQUEST)
 
         students = Student.objects.filter(
@@ -146,7 +192,7 @@ class StudentsResultsViewSet(mixins.ListModelMixin, viewsets.ViewSet):
             'studentstandard_set__level_id'
         )
 
-        serializer = StudentResultSerializer
+        serializer = StudentResultSerializer(students, many=True)
         return Response(serializer.data)
 
 

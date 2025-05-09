@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>QR-коды для класса {{ student_class }}</title>
+    <style>
+        @font-face {
+            font-family: 'DejaVuSerif';
+            src: url('{{ STATIC_URL }}fonts/DejaVuSerif.ttf');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        @page {
+            margin: 1cm;
+        }
+
+        body {
+            font-family: 'DejaVuSerif', sans-serif;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+
+        .qr-image {
+            width: 100px;
+            height: 100px;
+            align-content: center;
+        }
+
+        .student-name {
+            margin-top: 5px;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .qr-table-cell {
+            border: 1px dashed #999;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<h1>QR-коды для приглашения класса {{ student_class }}</h1>
+<table class="qr-table">
+    {% for item in qr_data %}
+        {% if forloop.first or forloop.counter0|divisibleby:"4" %}
+            <tr>
+        {% endif %}
+
+    <td class="qr-table-cell">
+        <img class="qr-image" src="data:image/png;base64,{{ item.qr_code }}" alt="QR код">
+        <div class="student-name">{{ item.initials }}</div>
+    </td>
+
+    {% if forloop.counter|divisibleby:"4" or forloop.last %}
+        </tr>
+    {% endif %}
+    {% endfor %}
+</table>
+</body>
+</html>

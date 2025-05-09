@@ -42,10 +42,20 @@ class FullClassNameSerializer(serializers.ModelSerializer):
 
 class StudentSerializer(serializers.ModelSerializer):
     student_class = StudentClassSerializer()
+    invitation_link = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Student
-        fields = ("id", "first_name", "last_name", "patronymic", "full_name", "student_class", "birthday", "gender")
+        fields = ("id", "first_name", "last_name", "patronymic", "full_name", "student_class", "birthday", "gender",
+                  "invitation_link")
+
+    def get_invitation_link(self, obj):
+        try:
+            if hasattr(obj, 'invitation'):
+                return obj.invitation.get_join_link()
+            return None
+        except:
+            return None
 
     def create(self, validated_data):
         student_class_data = validated_data.pop('student_class')
@@ -89,3 +99,44 @@ class StudentSerializer(serializers.ModelSerializer):
             )
 
         return class_instance
+
+
+class StudentInvitationSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    patronymic = serializers.CharField(allow_blank=True)
+
+
+class InvitationDetailSerializer(serializers.ModelSerializer):
+    invitation = serializers.SerializerMethodField()
+    student = serializers.SerializerMethodField()
+    class_info = serializers.SerializerMethodField()
+
+    class Meta:
+        model = models.Invitation
+        fields = ('invitation', 'student', 'class_info')
+
+    def get_invitation(self, obj):
+        return {
+            'code': obj.invite_code,
+            'is_used': obj.is_used
+        }
+
+    def get_student(self, obj):
+        student = obj.student
+        return {
+            'id': student.id,
+            'first_name': student.first_name,
+            'last_name': student.last_name,
+            'patronymic': student.patronymic or '',
+        }
+
+    def get_class_info(self, obj):
+        student_class = obj.student.student_class
+        return {
+            'id': student_class.id,
+            'number': student_class.number,
+            'class_name': student_class.class_name
+        }
+

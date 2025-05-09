@@ -1,3 +1,6 @@
+import uuid
+from datetime import timedelta
+
 from django.contrib.auth import authenticate, login, logout
 from django.db import transaction
 from django.middleware.csrf import get_token
@@ -7,20 +10,32 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
+from rest_framework.utils import timezone
 
 from students.models import Invitation
+from users import models
 from users.api.serializers import UserSerializer, UserCreateSerializer, ChangePasswordSerializer, \
-    ChangeUserDetailsSerializer, ChangeUserEmailSerializer
+    ChangeUserDetailsSerializer, ChangeUserEmailSerializer, UserLoginSerializer, UserInvitationSerializer, \
+    PasswordResetRequestSerializer, PasswordResetConfirmSerializer
+from students.api.serializers import InvitationDetailSerializer
+from users.utils import send_password_reset_email
 
 
 class UserLoginView(viewsets.ViewSet):
+    serializer_class = UserLoginSerializer
 
+    @extend_schema(
+        summary="Получение CSRF токена",
+        description="Получение CSRF токена для защиты от CSRF атак"
+    )
     def list(self, request):
-        """ Получение CSRF токена. """
         return response.Response({"csrf": get_token(request)})
 
-    @action(detail=False, methods=['post'])
-    def session_login(self, request):
+    @extend_schema(
+        summary="Вход пользователя (сессия браузера)",
+        description="Вход пользователя в систему"
+    )
+    def create(self, request):
         """ Вход пользователя. """
         email = request.data.get("email")
         password = request.data.get("password")
@@ -31,17 +46,16 @@ class UserLoginView(viewsets.ViewSet):
         if user is None or not user.is_authenticated:
             return response.Response(
                 {
-                    "статус": "ошибка",
-                    "детали": "Не правильно указана почта или пароль.",
+                    "status": "ошибка",
+                    "details": "Не правильно указана почта или пароль.",
                 },
                 status=status.HTTP_401_UNAUTHORIZED,
             )
-
         login(request, user)
         return response.Response(
             {
-                "статус": "успешно",
-                "детали": "Вход выполнен.",
+                "status": "успешно",
+                "details": "Вход выполнен.",
             }
         )
 
@@ -59,6 +73,16 @@ class UserLoginView(viewsets.ViewSet):
 
 class UserViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = UserCreateSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        return Response({
+            'message': 'Регистрация успешна. Проверьте вашу почту для подтверждения аккаунта.'
+        }, status=status.HTTP_201_CREATED)
+
 
 class UserProfileViewSet(viewsets.GenericViewSet):
     """ Работа с профилем пользователя. """
@@ -86,7 +110,7 @@ class UserProfileViewSet(viewsets.GenericViewSet):
         user = request.user
         user.set_password(serializer.validated_data['new_password'])
         user.save()
-        return response.Response({"успех": "Пароль успешно установлен"}, status=status.HTTP_200_OK)
+        return response.Response({"success": "Пароль успешно установлен"}, status=status.HTTP_200_OK)
 
     @extend_schema(
         summary="Смена ФИО",
@@ -106,7 +130,7 @@ class UserProfileViewSet(viewsets.GenericViewSet):
             user.patronymic = serializer.validated_data['patronymic']
 
         user.save()
-        return response.Response({"успех": "Данные пользователя успешно обновлены"}, status=status.HTTP_200_OK)
+        return response.Response({"success": "Данные пользователя успешно обновлены"}, status=status.HTTP_200_OK)
 
     @extend_schema(
         summary="Cмена эл. почты",
@@ -122,85 +146,134 @@ class UserProfileViewSet(viewsets.GenericViewSet):
             user.email = serializer.validated_data['email']
 
         user.save()
-        return response.Response({"успех": "Данные пользователя успешно обновлены"}, status=status.HTTP_200_OK)
+        return response.Response({"success": "Данные пользователя успешно обновлены"}, status=status.HTTP_200_OK)
 
 
 class UserLogoutView(viewsets.ViewSet):
     permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = None
 
     @extend_schema(
         summary="Выполнение выхода из аккаунта"
     )
-    @action(detail=False, methods=['post'])
-    def logout(self, request):
-        """Выполнение выхода из аккаунта."""
+    def create(self, request):
         logout(request)
         return response.Response(
             {
-                "status": "успех",
+                "status": "success",
                 "details": "Вы вышли из аккаунта",
             },
             status=status.HTTP_200_OK
         )
 
 
-class JoinByInvitationView(viewsets.ViewSet):
-    """API для присоединения студента по коду приглашения"""
+class PasswordResetViewSet(viewsets.ViewSet):
+    permission_classes = (permissions.AllowAny,)
 
-    def list(self, request, invite_code):
-        """
-        Получение информации о студенте по коду приглашения.
-        """
-        invitation = get_object_or_404(Invitation, invite_code=invite_code)
-        student = invitation.student
+    @extend_schema(
+        summary="Запрос на сброс пароля",
+        request=PasswordResetRequestSerializer
+    )
+    @action(detail=False, methods=['post'])
+    def request_reset(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid()
+        email = serializer.validated_data['email']
 
+        user = models.User.objects.filter(email=email).first()
+
+        if not user:
+            # Для безопасности не сообщаем, что пользователя не существует
+            return Response(
+                {
+                    "success": "Если данная почта существует, инструкции по сбросу пароля отправлены на указанный адрес электронной почты"},
+                status=status.HTTP_200_OK
+            )
+
+        reset_token = uuid.uuid4()
+
+        user.password_reset_token = reset_token
+        user.password_reset_expires = timezone.datetime.now(tz=timezone.timezone.utc) + timedelta(hours=24)
+        user.save()
+        send_password_reset_email(user)
+
+        return Response(
+            {
+                "success": "Если данная почта существует, инструкции по сбросу пароля отправлены на указанный адрес электронной почты"},
+            status=status.HTTP_200_OK
+        )
+
+    @extend_schema(
+        summary="Установка нового пароля",
+        request=PasswordResetConfirmSerializer,
+        description="Установка нового пароля по токену сброса пароля"
+    )
+    @action(detail=False, methods=['post'])
+    def confirm_reset(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid()
+
+        token = serializer.validated_data['token']
+        new_password = serializer.validated_data['new_password']
+
+        user = models.User.objects.filter(password_reset_token=token, password_reset_expires__gt=timezone.datetime.now(
+            tz=timezone.timezone.utc)).first()
+
+        if user is None:
+            return Response(
+                {"ошибка": "Недействительный или устаревший токен сброса пароля"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user.set_password(new_password)
+
+        user.password_reset_token = None
+        user.password_reset_expires = None
+        user.save()
+
+        return Response(
+            {"success": "Пароль успешно изменен. Теперь вы можете войти в систему"},
+            status=status.HTTP_200_OK
+        )
+
+
+class JoinByInvitationView(mixins.RetrieveModelMixin,
+                           mixins.CreateModelMixin, viewsets.ViewSet):
+    queryset = Invitation.objects.all()
+    serializer_class = UserInvitationSerializer
+    lookup_field = 'invite_code'
+
+    @extend_schema(
+        summary="Получение информации о студенте по коду приглашения",
+        description="Получение информации о студенте по коду приглашения",
+        responses={200: InvitationDetailSerializer}
+    )
+    def retrieve(self, request, *args, **kwargs):
+        code = kwargs.get('invite_code')
+        invitation = Invitation.objects.get(invite_code=code)
         if invitation.is_used:
             return Response(
                 {"error": "Это приглашение уже использовано."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        response_data = {
-            "invitation": {
-                "code": invitation.invite_code,
-                "is_used": invitation.is_used
-            },
-            "student": {
-                "id": student.id,
-                "first_name": student.first_name,
-                "last_name": student.last_name,
-                "patronymic": student.patronymic or '',
-            },
-            "class": {
-                "id": student.student_class.id,
-                "number": student.student_class.number,
-                "class_name": student.student_class.class_name
-            }
-        }
+        serializer = InvitationDetailSerializer(invitation)
+        return Response(serializer.data)
 
-        return Response(response_data)
-
+    @extend_schema(
+        summary="Регистрация по коду приглашения",
+        description="Регистрация ученика в качестве пользователя по коду приглашения",
+        request=UserInvitationSerializer,
+        responses={201: UserCreateSerializer}
+    )
     @transaction.atomic
-    def create(self, request, invite_code):
-        """Обработка присоединения по коду приглашения"""
-        invitation = get_object_or_404(Invitation, invite_code=invite_code, is_used=False)
-        student = invitation.student
-
-        user_data = request.data
-
-        if not all(k in user_data for k in ['email', 'password', 'first_name', 'last_name']):
-            return Response(
-                {"error": "Необходимо указать email, пароль, имя и фамилию"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        user_data['role'] = 'student'
-        serializer = UserCreateSerializer(
-            data=user_data,
-            context={'invitation_registration': True}
-        )
-
+    def create(self, request, *args, **kwargs):
+        serializer = UserInvitationSerializer(data=request.data)
         if serializer.is_valid():
+            invite_code = serializer.validated_data.pop('invite_code')
+            invitation = get_object_or_404(Invitation, invite_code=invite_code, is_used=False)
+            student = invitation.student
+
             user = serializer.save()
 
             student.user = user
@@ -210,8 +283,28 @@ class JoinByInvitationView(viewsets.ViewSet):
             invitation.save()
 
             return Response(
-                {"message": "Регистрация прошла успешно", "user": serializer.data},
+                {
+                    "success": "Регистрация успешна. Проверьте вашу почту для подтверждения аккаунта."
+                },
                 status=status.HTTP_201_CREATED
             )
-
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class VerifyEmailView(viewsets.ViewSet):
+    permission_classes = (permissions.AllowAny,)
+
+    @extend_schema(
+        summary="Подтверждение эл. почты",
+        description="Подтверждение эл. почты по токену",
+    )
+    def list(self, request, token):
+        user = models.User.objects.filter(verification_token=token).first()
+        if user is None:
+            return Response({'error': 'Неверный токен подтверждения'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.verification_token = None
+        user.is_email_verified = True
+
+        user.save()
+        return Response({'message': 'Email успешно подтвержден'}, status=status.HTTP_200_OK)

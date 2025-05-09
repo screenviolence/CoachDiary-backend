@@ -125,11 +125,16 @@ class StudentStandard(BaseModel):
         verbose_name="Дата записи"
     )
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, preserve_level=False, **kwargs):
         if isinstance(self.grade, float):
             self.grade = round(self.grade)
 
         student_class_number = self.student.student_class.number
+
+        if not preserve_level:
+            student_class_number = self.student.student_class.number
+        else:
+            student_class_number = self.level.level_number
 
         try:
             self.level = Level.objects.get(

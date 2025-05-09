@@ -1,6 +1,7 @@
 from django.contrib.auth.hashers import check_password
 from rest_framework import serializers
 
+from students.models import Invitation
 from .. import models
 
 
@@ -104,4 +105,38 @@ class ChangeUserEmailSerializer(serializers.Serializer):
     def validate(self, data):
         if not data.get('email'):
             raise serializers.ValidationError("Нужно указать эл. почту.")
+        return data
+
+
+class UserLoginSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    password = serializers.CharField(required=True, write_only=True, style={'input_type': 'password'})
+
+
+class UserInvitationSerializer(UserCreateSerializer):
+    invite_code = serializers.CharField(required=True)
+
+    class Meta(UserCreateSerializer.Meta):
+        fields = UserCreateSerializer.Meta.fields + ['invite_code']
+
+    def validate_invite_code(self, value):
+        invitation = Invitation.objects.filter(invite_code=value).first()
+        if invitation and not invitation.is_used:
+            return value
+        else:
+            raise serializers.ValidationError("Неверный код приглашения")
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    token = serializers.UUIDField(required=True)
+    new_password = serializers.CharField(required=True, write_only=True)
+    confirm_password = serializers.CharField(required=True, write_only=True)
+
+    def validate(self, data):
+        if data['new_password'] != data['confirm_password']:
+            raise serializers.ValidationError("Пароли не совпадают.")
         return data

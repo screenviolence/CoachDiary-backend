@@ -191,7 +191,6 @@ class StudentStandardCreateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Invalid level for the student's class")
 
         data['grade'] = models.Level.calculate_grade(level, value)
-
         data['student'] = student
         data['standard'] = standard
         data['level'] = level
@@ -209,3 +208,26 @@ class StudentStandardCreateSerializer(serializers.ModelSerializer):
             }
         )
         return student_standard
+
+
+class StandardInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Standard
+        fields = ('id', 'name', 'has_numeric_value')
+
+
+class StudentStandardItemSerializer(serializers.ModelSerializer):
+    standard = StandardInfoSerializer()
+    level_number = serializers.SerializerMethodField()
+
+    class Meta:
+        model = models.StudentStandard
+        fields = ('standard', 'level_number', 'value', 'grade')
+
+    def get_level_number(self, obj):
+        return obj.level.level_number if obj.level else None
+
+
+class StudentStandardsResponseSerializer(serializers.Serializer):
+    standards = StudentStandardItemSerializer(many=True)
+    summary_grade = serializers.FloatField()

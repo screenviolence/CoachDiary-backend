@@ -108,24 +108,27 @@ class Command(BaseCommand):
             user = student.student_class.class_owner
             user_standards = Standard.objects.filter(who_added=user)
 
-            for standard in user_standards:
-                student_class_number = student.student_class.number
-                level = Level.objects.get(standard=standard, level_number=student_class_number,
-                                          gender=student.gender)
-                if standard.has_numeric_value:
-                    value = random.randint(1, 50)
-                    grade = level.calculate_grade(value)
-                else:
-                    value = random.randint(2, 20)
-                    grade = value
+            for class_number in range(1, student.student_class.number + 1):
+                for standard in user_standards:
+                    level = Level.objects.get(standard=standard, level_number=class_number,
+                                              gender=student.gender)
+                    print(
+                        f"Стандарт: {standard.name}, Уровень: {level.level_number}, Студента: {student.first_name} {student.last_name}")
+                    if standard.has_numeric_value:
+                        value = random.randint(1, 50)
+                        grade = level.calculate_grade(value)
+                    else:
+                        value = random.randint(2, 20)
+                        grade = value
 
-                StudentStandard.objects.create(
-                    student=student,
-                    standard=standard,
-                    value=value,
-                    grade=grade,
-                    level=level
-                )
-
+                    student_object = StudentStandard(
+                        student=student,
+                        standard=standard,
+                        value=value,
+                        grade=grade,
+                        level=level
+                    )
+                    student_object.save(preserve_level=True)
+                    print(student_object.level)
         elapsed_time = time.time() - start_time
         self.stdout.write(self.style.SUCCESS(f'Тестовые данные успешно созданы за {elapsed_time:.2f} секунд.'))

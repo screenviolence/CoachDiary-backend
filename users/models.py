@@ -2,7 +2,7 @@ from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
                                         PermissionsMixin)
 from django.db import models
 
-from common.models import BaseModel
+from common.models import BaseModel, HumanModel
 
 
 class LowerCaseEmailField(models.EmailField):
@@ -18,7 +18,7 @@ class LowerCaseEmailField(models.EmailField):
 
 
 class UserManager(BaseUserManager):
-    """Custom user manager which provides correct creation of superuser."""
+    """Custom user manager which provides the correct creation of superuser."""
 
     def build_user(self, email: str, password: str, first_name: str, last_name: str, patronymic: str = None,
                    role: str = None) -> "User":
@@ -66,35 +66,26 @@ class UserManager(BaseUserManager):
         return user
 
 
-class User(AbstractBaseUser, BaseModel, PermissionsMixin):
+class User(AbstractBaseUser, HumanModel, PermissionsMixin):
     """Custom user model.
 
     It is used to provide login via email instead of username as username will
     not be used.
 
     """
-
     ROLE_CHOICES = (
         ('teacher', 'Тренер'),
         ('student', 'Учащийся'),
     )
 
-    first_name = models.CharField(max_length=255, blank=False)
-    last_name = models.CharField(max_length=255, blank=False)
-    patronymic = models.CharField(max_length=255, blank=True)
-    email = LowerCaseEmailField(
-        blank=False,
-        unique=True,
-    )
+    email = LowerCaseEmailField(blank=False, unique=True)
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='teacher')
     is_superuser = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
-
-    @property
-    def full_name(self):
-        if self.patronymic:
-            return f"{self.last_name} {self.first_name} {self.patronymic}"
-        return f"{self.last_name} {self.first_name}"
+    is_email_verified = models.BooleanField(default=False)
+    verification_token = models.CharField(max_length=100, null=True, blank=True)
+    password_reset_token = models.UUIDField(null=True, blank=True)
+    password_reset_expires = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.full_name
