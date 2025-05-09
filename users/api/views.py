@@ -157,7 +157,6 @@ class UserLogoutView(viewsets.ViewSet):
         summary="Выполнение выхода из аккаунта"
     )
     def create(self, request):
-        """Выполнение выхода из аккаунта."""
         logout(request)
         return response.Response(
             {
