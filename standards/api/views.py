@@ -141,7 +141,7 @@ class StudentStandardsViewSet(viewsets.ViewSet):
         if numeric_standards:
             summary_grade = sum(s.grade for s in numeric_standards) / len(numeric_standards)
         else:
-            summary_grade = 'Недостаточно данных'
+            summary_grade = 0
 
         response_data = {
             'standards': filtered_standards,

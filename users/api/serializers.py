@@ -120,8 +120,8 @@ class UserInvitationSerializer(UserCreateSerializer):
         fields = UserCreateSerializer.Meta.fields + ['invite_code']
 
     def validate_invite_code(self, value):
-        invitation = Invitation.objects.get(invite_code=value)
-        if invitation is not None and not invitation.is_used:
+        invitation = Invitation.objects.filter(invite_code=value).first()
+        if invitation and not invitation.is_used:
             return value
         else:
             raise serializers.ValidationError("Неверный код приглашения")
