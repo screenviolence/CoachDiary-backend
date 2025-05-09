@@ -1,9 +1,5 @@
-import os
-from dotenv import load_dotenv
-
+from django.conf import settings
 from datetime import timedelta
-
-load_dotenv()
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -22,10 +18,8 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': True,
-
     'ALGORITHM': 'HS256',
-    'SIGNING_KEY': os.getenv('DJANGO_SECRET_KEY'),
-
+    'SIGNING_KEY': settings.SECRET_KEY,
     'AUTH_HEADER_TYPES': ('Bearer',),
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
@@ -38,4 +32,8 @@ OAUTH2_PROVIDER = {
     'ACCESS_TOKEN_EXPIRE_SECONDS': 604800,
     'REFRESH_TOKEN_EXPIRE_SECONDS': 30 * 24 * 60 * 60,
     'ROTATE_REFRESH_TOKEN': True,
+}
+
+SPECTACULAR_SETTINGS = {
+    "SCHEMA_PATH_PREFIX": r"/api/"
 }

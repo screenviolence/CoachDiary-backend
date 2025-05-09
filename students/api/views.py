@@ -1,14 +1,18 @@
+import base64
+
 import qrcode
 from io import BytesIO
 
 from django.http import HttpResponse
+from django.template.loader import render_to_string
 
 from rest_framework import mixins, viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
-from xhtml2pdf.files import pisaFileObject
+from xhtml2pdf import pisa
 
+from common import utils
 from common.permissions import IsTeacher
 from standards.models import StudentStandard, Standard
 from . import serializers
@@ -42,12 +46,6 @@ class StudentViewSet(
         """
         Генерирует PDF с QR-кодами для ссылок-приглашений выбранного класса.
         """
-        from django.template.loader import render_to_string
-        from xhtml2pdf import pisa
-        from django.conf import settings
-        import base64
-        import os
-
         class_id = request.query_params.get('class_id')
         if not class_id:
             return Response(
@@ -90,7 +88,7 @@ class StudentViewSet(
                     qr_image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
 
                     qr_data.append({
-                        'full_name': student.full_name,
+                        'initials': student.initials,
                         'invitation_link': invitation_link,
                         'qr_code': qr_image_base64,
                     })
@@ -104,30 +102,11 @@ class StudentViewSet(
 
         result = BytesIO()
 
-        def link_callback(uri, rel):
-            if uri.startswith('data:'):
-                return uri
-
-            if uri.startswith(settings.STATIC_URL):
-                path = os.path.join(settings.STATIC_ROOT, uri.replace(settings.STATIC_URL, ''))
-            elif uri.startswith(settings.MEDIA_URL):
-                path = os.path.join(settings.MEDIA_ROOT, uri.replace(settings.MEDIA_URL, ''))
-            else:
-                # Путь к шрифтам
-                font_dir = os.path.join(settings.BASE_DIR, 'static\\fonts')
-                path = os.path.join(font_dir, os.path.basename(uri))
-                print(path)
-            pisaFileObject.getNamedFile = lambda self: path
-            if os.path.isfile(path):
-                return path
-
-            return uri
-
         pisa_status = pisa.CreatePDF(
             html_string,
             dest=result,
             encoding='UTF-8',
-            link_callback=link_callback
+            link_callback=utils.link_callback
         )
 
         if pisa_status.err:

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <title>QR-коды для класса {{ student_class }}</title>
@@ -25,42 +25,42 @@
             margin-bottom: 20px;
         }
 
-        .qr-container {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-around;
-        }
-
-        .qr-card {
-            border: 1px dashed #999;
-            margin: 10px;
-            padding: 10px;
-            width: 130px;
-            text-align: center;
-            page-break-inside: avoid;
-        }
-
         .qr-image {
             width: 100px;
             height: 100px;
+            align-content: center;
         }
 
         .student-name {
             margin-top: 5px;
             font-size: 12px;
             font-weight: bold;
+            text-align: center;
+        }
+
+        .qr-table-cell {
+            border: 1px dashed #999;
+            text-align: center;
         }
     </style>
 </head>
 <body>
-<h1>QR-коды для класса {{ student_class }}</h1>
-<div class="qr-container">
+<h1>QR-коды для приглашения класса {{ student_class }}</h1>
+<table class="qr-table">
     {% for item in qr_data %}
-        <div class="qr-card">
-            <img class="qr-image" src="data:image/png;base64,{{ item.qr_code }}" alt="QR код">
-            <div class="student-name">{{ item.full_name }}</div>
-        </div>
+        {% if forloop.first or forloop.counter0|divisibleby:"4" %}
+            <tr>
+        {% endif %}
+
+    <td class="qr-table-cell">
+        <img class="qr-image" src="data:image/png;base64,{{ item.qr_code }}" alt="QR код">
+        <div class="student-name">{{ item.initials }}</div>
+    </td>
+
+    {% if forloop.counter|divisibleby:"4" or forloop.last %}
+        </tr>
+    {% endif %}
     {% endfor %}
-</div>
+</table>
 </body>
 </html>

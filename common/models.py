@@ -7,6 +7,28 @@ class BaseModel(SoftDeleteModel, models.Model):
     """
     Общая базовая модель.
     """
+
+    class Meta:
+        abstract = True
+
+
+class HumanModel(BaseModel):
+    first_name = models.CharField(max_length=255, blank=False)
+    last_name = models.CharField(max_length=255, blank=False)
+    patronymic = models.CharField(max_length=255, blank=True)
+
+    @property
+    def initials(self):
+        if self.patronymic:
+            return f"{self.last_name} {self.first_name[0]}.{self.patronymic[0]}."
+        return f"{self.last_name} {self.first_name[0]}."
+
+    @property
+    def full_name(self):
+        if self.patronymic:
+            return f"{self.last_name} {self.first_name} {self.patronymic}"
+        return f"{self.first_name} {self.last_name}"
+
     class Meta:
         abstract = True
 

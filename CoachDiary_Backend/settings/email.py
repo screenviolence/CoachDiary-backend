@@ -1,9 +1,15 @@
 import os
+
+from django.conf import settings
 from dotenv import load_dotenv
 
 load_dotenv()
 
-EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND')
+if settings.DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND')
+
 EMAIL_HOST = os.environ.get('EMAIL_HOST')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT'))
 EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL')

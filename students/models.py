@@ -1,15 +1,12 @@
-import uuid
-
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
-from django.db.models.signals import post_save
-from django.dispatch import receiver
+
 from django.utils import timezone
 import datetime
 from common.models import (
     BaseModel,
-    GenderChoices,
+    GenderChoices, HumanModel,
 )
 from users.models import User
 
@@ -66,13 +63,10 @@ class StudentClass(BaseModel):
         ordering = ['number', 'class_name']
 
 
-class Student(BaseModel):
+class Student(HumanModel):
     """
     Модель ученика.
     """
-    first_name = models.CharField(max_length=255, blank=False)
-    last_name = models.CharField(max_length=255, blank=False)
-    patronymic = models.CharField(max_length=255, blank=True)
     student_class = models.ForeignKey(
         StudentClass,
         on_delete=models.CASCADE,
@@ -94,12 +88,6 @@ class Student(BaseModel):
         blank=True,
         verbose_name="Учетная запись ученика",
     )
-
-    @property
-    def full_name(self):
-        if self.patronymic:
-            return f"{self.last_name} {self.first_name} {self.patronymic}"
-        return f"{self.first_name} {self.last_name}"
 
     def __str__(self):
         return f"Ученик {self.full_name} ({self.birthday.strftime('%d.%m.%Y')} г.р.), {self.student_class}"
@@ -139,18 +127,3 @@ class Invitation(BaseModel):
     class Meta:
         verbose_name = "Приглашение"
         verbose_name_plural = "Приглашения"
-
-
-@receiver(post_save, sender=Student)
-def create_invitation(sender, instance, created, **kwargs):
-    """Создает приглашение для нового студента."""
-    if created:  # Только при создании нового студента
-        # Проверяем, есть ли уже приглашение
-        if not hasattr(instance, 'invitation'):
-            # Генерируем уникальный код
-            invite_code = uuid.uuid4().hex[:8].upper()
-            Invitation.objects.create(
-                student=instance,
-                invite_code=invite_code,
-                is_used=False
-            )
