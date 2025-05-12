@@ -4,6 +4,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import mixins, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from students.models import Student
 from common.permissions import IsTeacher
@@ -100,9 +101,8 @@ class StandardValueViewSet(
 
 
 class StudentStandardsViewSet(viewsets.ViewSet):
-    permission_classes = (IsTeacher,)
     serializer_class = StudentStandardsResponseSerializer
-
+    permission_classes = (IsAuthenticated,)
     @extend_schema(
         summary="Результаты ученика по его нормативам",
         description="Отображает результаты ученика по его нормативам",
@@ -117,10 +117,14 @@ class StudentStandardsViewSet(viewsets.ViewSet):
         ]
     )
     def list(self, request, student_id=None):
-        try:
-            student = Student.objects.get(id=student_id, student_class__class_owner=request.user)
-        except Student.DoesNotExist:
-            raise PermissionDenied("У вас нет прав доступа к стандартам этого студента.")
+        if hasattr(request.user, 'role') and request.user.role == 'teacher':
+                student = Student.objects.filter(id=student_id, student_class__class_owner=request.user).first()
+        elif hasattr(request.user, 'role') and request.user.role == 'student':
+            if not hasattr(request.user, 'student') or str(request.user.student.id) != str(student_id):
+                raise PermissionDenied("У вас нет прав доступа к стандартам этого студента.")
+            student = request.user.student
+        else:
+            raise PermissionDenied("У вас нет прав доступа к стандартам студентов.")
 
         student_standards = models.StudentStandard.objects.filter(student=student)
 
