@@ -115,24 +115,26 @@ class StudentStandardSerializer(serializers.ModelSerializer):
 
 class StudentResultSerializer(serializers.ModelSerializer):
     student_class = FullClassNameSerializer()
-    student_standards = StudentStandardSerializer(source='studentstandard_set', many=True)
-    levels = LevelSerializer(source='level_set', many=True)
 
     class Meta:
         model = Student
-        fields = ['id', 'full_name', 'student_class', 'birthday', 'gender', 'student_standards', 'levels']
+        fields = ['id', 'first_name', 'last_name', 'patronymic', 'full_name', 'student_class', 'birthday', 'gender']
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-
-        if representation.get('student_standards'):
-            levels = []
-            for standard in representation['student_standards']:
-                if 'level' in standard and standard['level']:
-                    levels.append(standard['level'])
-                representation.update(standard)
-            representation['levels'] = levels
-            representation.pop('student_standards')
+        standard_id = self.context.get('standard_id')
+        if standard_id:
+            try:
+                student_standard = instance.standards.get(
+                    standard_id=standard_id,
+                    level__level_number=instance.student_class.number,
+                    level__gender=instance.gender
+                )
+                representation['value'] = student_standard.value
+                representation['grade'] = student_standard.grade
+            except:
+                representation['value'] = None
+                representation['grade'] = None
 
         return representation
 
@@ -140,7 +142,6 @@ class StudentResultSerializer(serializers.ModelSerializer):
 class StudentStandardCreateSerializer(serializers.ModelSerializer):
     student_id = serializers.IntegerField(write_only=True)
     standard_id = serializers.IntegerField(write_only=True)
-    level_id = serializers.IntegerField(write_only=True, required=False)
     level_number = serializers.IntegerField(write_only=True, required=False)
 
     class Meta:
@@ -152,7 +153,6 @@ class StudentStandardCreateSerializer(serializers.ModelSerializer):
         student_id = data.get('student_id')
         standard_id = data.get('standard_id')
         value = data.get('value')
-        level_id = data.get('level_id')
         level_number = data.get('level_number')
 
         try:
@@ -165,12 +165,7 @@ class StudentStandardCreateSerializer(serializers.ModelSerializer):
         except models.Standard.DoesNotExist:
             raise serializers.ValidationError("Standard does not exist")
 
-        if level_id is not None:
-            try:
-                level = models.Level.objects.get(id=level_id)
-            except models.Level.DoesNotExist:
-                raise serializers.ValidationError("Invalid level_id")
-        elif level_number is not None:
+        if level_number is not None:
             try:
                 level = models.Level.objects.get(
                     level_number=level_number,
@@ -198,13 +193,16 @@ class StudentStandardCreateSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        level = validated_data['level']
+
         student_standard, created = models.StudentStandard.objects.update_or_create(
             student=validated_data['student'],
             standard=validated_data['standard'],
+            # Условия для поиска записи
             defaults={
+                'level': level,
                 'value': validated_data['value'],
                 'grade': validated_data['grade'],
-                'level': validated_data['level']
             }
         )
         return student_standard
