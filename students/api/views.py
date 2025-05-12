@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from xhtml2pdf import pisa
 
 from common import utils
-from common.permissions import IsTeacher
+from common.permissions import IsTeacher, IsStudent
 from standards.models import StudentStandard, Standard
 from . import serializers
 from .serializers import StudentSerializer
@@ -39,7 +39,32 @@ class StudentViewSet(
 
     def get_queryset(self):
         user = self.request.user
-        return models.Student.objects.filter(student_class__class_owner=user)
+
+        if hasattr(user, 'role') and user.role == 'teacher':
+            return models.Student.objects.filter(student_class__class_owner=user)
+        elif hasattr(user, 'role') and user.role == 'student' and hasattr(user, 'student'):
+            return models.Student.objects.filter(id=user.student.id)
+
+        return models.Student.objects.none()
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        if hasattr(request.user, 'role') and request.user.role == 'teacher':
+            if instance.student_class.class_owner != request.user:
+                return Response(
+                    {"error": "У вас нет доступа к этому студенту"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        elif hasattr(request.user, 'role') and request.user.role == 'student':
+            if not hasattr(request.user, 'student') or request.user.student.id != instance.id:
+                return Response(
+                    {"error": "У вас нет доступа к этому студенту"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
     def generate_qr_codes_pdf(self, request):
