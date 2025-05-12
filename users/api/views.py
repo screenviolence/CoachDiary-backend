@@ -76,7 +76,7 @@ class UserViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        serializer.is_valid()
         user = serializer.save()
 
         return Response({
@@ -106,7 +106,7 @@ class UserProfileViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['put'])
     def change_password(self, request):
         serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
+        serializer.is_valid()
         user = request.user
         user.set_password(serializer.validated_data['new_password'])
         user.save()
@@ -120,7 +120,7 @@ class UserProfileViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['patch'])
     def change_details(self, request):
         serializer = ChangeUserDetailsSerializer(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
+        serializer.is_valid()
         user = request.user
         if 'first_name' in serializer.validated_data:
             user.first_name = serializer.validated_data['first_name']
@@ -140,7 +140,7 @@ class UserProfileViewSet(viewsets.GenericViewSet):
     @action(detail=False, methods=['patch'])
     def change_email(self, request):
         serializer = ChangeUserEmailSerializer(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
+        serializer.is_valid()
         user = request.user
         if 'email' in serializer.validated_data and serializer.validated_data['email'] != user.email:
             user.email = serializer.validated_data['email']
@@ -161,7 +161,7 @@ class UserLogoutView(viewsets.ViewSet):
         return response.Response(
             {
                 "status": "success",
-                "details": "Вы вышли из аккаунта",
+                "detail": "Вы вышли из аккаунта",
             },
             status=status.HTTP_200_OK
         )
@@ -221,7 +221,7 @@ class PasswordResetViewSet(viewsets.ViewSet):
 
         if user is None:
             return Response(
-                {"ошибка": "Недействительный или устаревший токен сброса пароля"},
+                {"error": "Недействительный или устаревший токен сброса пароля"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -277,8 +277,9 @@ class JoinByInvitationView(mixins.RetrieveModelMixin,
             user = serializer.save()
 
             student.user = user
+            user.role = 'student'
+            user.save()
             student.save()
-
             invitation.is_used = True
             invitation.save()
 

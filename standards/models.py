@@ -125,7 +125,7 @@ class StudentStandard(BaseModel):
         verbose_name="Дата записи"
     )
 
-    def save(self, *args, preserve_level=False, **kwargs):
+    def save(self, *args, preserve_level=True, **kwargs):
         if isinstance(self.grade, float):
             self.grade = round(self.grade)
 

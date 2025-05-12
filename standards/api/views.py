@@ -10,6 +10,7 @@ from common.permissions import IsTeacher
 from standards import models
 from .serializers import StudentResultSerializer, StandardSerializer, StudentStandardCreateSerializer, \
     StudentStandardSerializer, StudentStandardsResponseSerializer
+from django.db.models import F
 
 
 class StandardValueViewSet(
@@ -153,7 +154,7 @@ class StudentStandardsViewSet(viewsets.ViewSet):
         return Response(serializer.data)
 
 
-class StudentsResultsViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
+class StudentsResultsViewSet(mixins.ListModelMixin, viewsets.ViewSet):
     permission_classes = (IsTeacher,)
     serializer_class = StudentResultSerializer
 
@@ -182,18 +183,21 @@ class StudentsResultsViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         standard_id = request.query_params.get('standard_id')
 
         if not class_ids or not standard_id:
-            return Response({"details": "Требуются параметры class_id и standard_id."},
+            return Response({"detail": "Требуются параметры class_id и standard_id."},
                             status=status.HTTP_400_BAD_REQUEST)
 
         students = Student.objects.filter(
-            student_class__id__in=class_ids
-        ).prefetch_related(
-            'studentstandard_set__standard',
-            'studentstandard_set__level_id'
+            student_class__id__in=class_ids,
+            student_class__class_owner=request.user
+        )
+        serializer = StudentResultSerializer(
+            students,
+            many=True,
+            context={'standard_id': standard_id}
         )
 
-        serializer = StudentResultSerializer(students, many=True)
-        return Response(serializer.data)
+        response_data = [item for item in serializer.data]
+        return Response(response_data)
 
 
 class StudentResultsCreateOrUpdateViewSet(viewsets.ViewSet):
@@ -214,12 +218,14 @@ class StudentResultsCreateOrUpdateViewSet(viewsets.ViewSet):
             serializer = StudentStandardCreateSerializer(data=entry)
             if serializer.is_valid():
                 validated_data = serializer.validated_data
+                student = validated_data['student']
                 student_id = validated_data['student'].id
                 standard_id = validated_data['standard'].id
-
+                level_number = validated_data.get('level_number', student.student_class.number)
                 try:
                     student_result = models.StudentStandard.objects.get(
                         student_id=student_id, standard_id=standard_id,
+                        level__level_number=level_number
                     )
                     update_serializer = StudentStandardCreateSerializer(
                         student_result, data=entry, partial=True

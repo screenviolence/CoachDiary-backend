@@ -16,9 +16,14 @@ class UserSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "patronymic",
-            "full_name"
+            "full_name",
+            "role",
         )
-
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        if instance.role == 'student':
+            representation['id'] = instance.student.id
+        return representation
 
 class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, style={'input_type': 'password'})
