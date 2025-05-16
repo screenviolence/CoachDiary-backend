@@ -18,12 +18,15 @@ class UserSerializer(serializers.ModelSerializer):
             "patronymic",
             "full_name",
             "role",
+            "is_email_verified",
         )
+
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         if instance.role == 'student':
             representation['id'] = instance.student.id
         return representation
+
 
 class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, style={'input_type': 'password'})
@@ -44,13 +47,14 @@ class UserCreateSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, data):
+        if models.User.objects.filter(email=data["email"]).exists():
+            raise serializers.ValidationError("Эта эл. почта уже используется")
         if data['password'] != data['confirm_password']:
             raise serializers.ValidationError("Пароли не совпадают.")
         return data
 
     def create(self, validated_data):
         validated_data.pop('confirm_password')
-
         email = validated_data.pop('email')
         password = validated_data.pop('password')
         first_name = validated_data.pop('first_name')
@@ -80,9 +84,9 @@ class ChangePasswordSerializer(serializers.Serializer):
 
     def validate(self, data):
         if data['new_password'] != data['confirm_new_password']:
-            raise serializers.ValidationError("Passwords doesn't match.")
+            raise serializers.ValidationError("Пароли не совпадают.")
         if not check_password(data['current_password'], self.context['request'].user.password):
-            raise serializers.ValidationError("Current password is incorrect.")
+            raise serializers.ValidationError("Текущий пароль неверный.")
         return data
 
 

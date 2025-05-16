@@ -31,6 +31,7 @@ class HumanModel(BaseModel):
 
     class Meta:
         abstract = True
+        ordering = ['last_name', 'first_name', 'patronymic']
 
 
 class GenderChoices(models.TextChoices):

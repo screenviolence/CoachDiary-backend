@@ -112,8 +112,6 @@ class Command(BaseCommand):
                 for standard in user_standards:
                     level = Level.objects.get(standard=standard, level_number=class_number,
                                               gender=student.gender)
-                    print(
-                        f"Стандарт: {standard.name}, Уровень: {level.level_number}, Студента: {student.first_name} {student.last_name}")
                     if standard.has_numeric_value:
                         value = random.randint(1, 50)
                         grade = level.calculate_grade(value)
@@ -129,6 +127,6 @@ class Command(BaseCommand):
                         level=level
                     )
                     student_object.save(preserve_level=True)
-                    print(student_object.level)
+
         elapsed_time = time.time() - start_time
         self.stdout.write(self.style.SUCCESS(f'Тестовые данные успешно созданы за {elapsed_time:.2f} секунд.'))
