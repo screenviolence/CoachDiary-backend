@@ -171,10 +171,15 @@ class UserLogoutView(viewsets.ViewSet):
             status=status.HTTP_200_OK
         )
 
+
 class ResendConformationEmailView(viewsets.ViewSet):
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = None
 
+    @extend_schema(
+        summary="Отправка повторного письма для подтверждения эл. почты",
+        description="Отправляет повторное письмо для подтверждения эл. почты"
+    )
     def list(self, request):
         user = request.user
         if user.is_email_verified:
