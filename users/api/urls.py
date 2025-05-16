@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework import routers
 
 from .views import UserLoginView, UserViewSet, UserProfileViewSet, UserLogoutView, JoinByInvitationView, \
-    VerifyEmailView, PasswordResetViewSet, TeacherImportExportViewSet
+    VerifyEmailView, PasswordResetViewSet, TeacherImportExportViewSet, ResendConformationEmailView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -16,6 +16,7 @@ user_router.register(r'logout', UserLogoutView, basename='user-logout')
 user_router.register(r'create-user/from-invitation', JoinByInvitationView, basename='create-user-from-invitation')
 user_router.register(r'reset-password', PasswordResetViewSet, basename='reset-password')
 user_router.register(r'teacher', TeacherImportExportViewSet, basename='import-export')
+user_router.register(r'resend-confirmation', ResendConformationEmailView, basename='users')
 urlpatterns = [
     path("", include(user_router.urls)),
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),

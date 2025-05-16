@@ -23,6 +23,7 @@ from users.api.serializers import UserSerializer, UserCreateSerializer, ChangePa
     ChangeUserDetailsSerializer, ChangeUserEmailSerializer, UserLoginSerializer, UserInvitationSerializer, \
     PasswordResetRequestSerializer, PasswordResetConfirmSerializer
 from students.api.serializers import InvitationDetailSerializer
+from users.signals import send_confirmation_email
 from users.utils import send_password_reset_email
 
 
@@ -170,6 +171,23 @@ class UserLogoutView(viewsets.ViewSet):
             status=status.HTTP_200_OK
         )
 
+class ResendConformationEmailView(viewsets.ViewSet):
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = None
+
+    def list(self, request):
+        user = request.user
+        if user.is_email_verified:
+            return Response(
+                {"error": "Эл. почта уже подтверждена"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        send_confirmation_email(instance=user, created=True, sender=user)
+        return Response(
+            {"success": "Инструкции по подтверждению эл. почты отправлены на указанный адрес электронной почты"},
+            status=status.HTTP_200_OK
+        )
 
 class PasswordResetViewSet(viewsets.ViewSet):
     permission_classes = (permissions.AllowAny,)
