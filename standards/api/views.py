@@ -99,10 +99,33 @@ class StandardValueViewSet(
         else:
             serializer.save(who_added_id=self.request.user.id)
 
+    def perform_update(self, serializer):
+        """
+        Метод обновления норматива для сохранения связей с результатами студентов
+        """
+        with transaction.atomic():
+            instance = self.get_object()
+            old_name = instance.name
+            new_name = serializer.validated_data.get('name', old_name)
+
+            if hasattr(models, 'StudentStandard'):
+                related_records = list(models.StudentStandard.objects.filter(standard=instance))
+            else:
+                related_records = []
+
+            updated_standard = serializer.save()
+
+            for record in related_records:
+                record.standard = updated_standard
+                record.save()
+
+            return updated_standard
+
 
 class StudentStandardsViewSet(viewsets.ViewSet):
     serializer_class = StudentStandardsResponseSerializer
     permission_classes = (IsAuthenticated,)
+
     @extend_schema(
         summary="Результаты ученика по его нормативам",
         description="Отображает результаты ученика по его нормативам",
@@ -118,7 +141,7 @@ class StudentStandardsViewSet(viewsets.ViewSet):
     )
     def list(self, request, student_id=None):
         if hasattr(request.user, 'role') and request.user.role == 'teacher':
-                student = Student.objects.filter(id=student_id, student_class__class_owner=request.user).first()
+            student = Student.objects.filter(id=student_id, student_class__class_owner=request.user).first()
         elif hasattr(request.user, 'role') and request.user.role == 'student':
             if not hasattr(request.user, 'student') or str(request.user.student.id) != str(student_id):
                 raise PermissionDenied("У вас нет прав доступа к стандартам этого студента.")
@@ -163,8 +186,8 @@ class StudentsResultsViewSet(mixins.ListModelMixin, viewsets.ViewSet):
     serializer_class = StudentResultSerializer
 
     @extend_schema(
-        summary="Результаты учеников из выбранных классов по выбранному нормативу",
-        description="Отображает результаты учеников из выбранного одного или нескольких классов по выбранному нормативу",
+        summary="Результаты учеников из выбранных классов по выбранным нормативам",
+        description="Отображает результаты учеников из выбранного одного или нескольких классов по выбранным нормативам",
         parameters=[
             OpenApiParameter(
                 name='class_id[]',
@@ -174,20 +197,20 @@ class StudentsResultsViewSet(mixins.ListModelMixin, viewsets.ViewSet):
                 required=True
             ),
             OpenApiParameter(
-                name='standard_id',
+                name='standard_id[]',
                 type=OpenApiTypes.INT,
                 location='query',
-                description='Идентификатор норматива, по которому нужно вывести результаты',
+                description='Идентификаторы нормативов, по которым нужно вывести результаты',
                 required=True
             )
         ]
     )
     def list(self, request, *args, **kwargs):
         class_ids = request.query_params.getlist('class_id[]')
-        standard_id = request.query_params.get('standard_id')
+        standard_ids = request.query_params.getlist('standard_id[]')
 
-        if not class_ids or not standard_id:
-            return Response({"detail": "Требуются параметры class_id и standard_id."},
+        if not class_ids or not standard_ids:
+            return Response({"detail": "Требуются параметры class_id[] и standard_id[]."},
                             status=status.HTTP_400_BAD_REQUEST)
 
         students = Student.objects.filter(
@@ -197,11 +220,10 @@ class StudentsResultsViewSet(mixins.ListModelMixin, viewsets.ViewSet):
         serializer = StudentResultSerializer(
             students,
             many=True,
-            context={'standard_id': standard_id}
+            context={'standard_ids': standard_ids}
         )
 
-        response_data = [item for item in serializer.data]
-        return Response(response_data)
+        return Response(serializer.data)
 
 
 class StudentResultsCreateOrUpdateViewSet(viewsets.ViewSet):

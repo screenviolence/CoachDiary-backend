@@ -24,6 +24,7 @@ reportlab = "^4.4.0"
 pillow = "^11.2.1"
 fpdf2 = "^2.8.2"
 xhtml2pdf = "^0.2.17"
+pandas = "^2.2.3"
 
 
 [build-system]
