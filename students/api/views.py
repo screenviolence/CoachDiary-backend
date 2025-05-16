@@ -1,8 +1,3 @@
-import base64
-
-import qrcode
-from io import BytesIO
-
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 
@@ -10,7 +5,6 @@ from rest_framework import mixins, viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
-from xhtml2pdf import pisa
 
 from common import utils
 from common.permissions import IsTeacher
@@ -68,6 +62,10 @@ class StudentViewSet(
 
     @action(detail=False, methods=['get'])
     def generate_qr_codes_pdf(self, request):
+        import base64
+        import qrcode
+        from io import BytesIO
+        from xhtml2pdf import pisa
         """
         Генерирует PDF с QR-кодами для ссылок-приглашений выбранного класса.
         """

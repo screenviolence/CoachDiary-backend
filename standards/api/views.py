@@ -10,8 +10,7 @@ from students.models import Student
 from common.permissions import IsTeacher
 from standards import models
 from .serializers import StudentResultSerializer, StandardSerializer, StudentStandardCreateSerializer, \
-    StudentStandardSerializer, StudentStandardsResponseSerializer
-from django.db.models import F
+    StudentStandardsResponseSerializer
 
 
 class StandardValueViewSet(
@@ -145,7 +144,6 @@ class StudentStandardsViewSet(viewsets.ViewSet):
             if not student:
                 raise PermissionDenied("У вас нет прав доступа к этому студенту.")
 
-            # Учитель видит только активные результаты
             student_standards = models.StudentStandard.objects.filter(student=student)
         elif hasattr(request.user, 'role') and request.user.role == 'student':
             if not hasattr(request.user, 'student') or str(request.user.student.id) != str(student_id):
