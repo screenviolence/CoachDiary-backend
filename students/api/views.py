@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from xhtml2pdf import pisa
 
 from common import utils
-from common.permissions import IsTeacher, IsStudent
+from common.permissions import IsTeacher
 from standards.models import StudentStandard, Standard
 from . import serializers
 from .serializers import StudentSerializer
