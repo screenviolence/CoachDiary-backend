@@ -81,9 +81,8 @@ class UserViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid()
-        user = serializer.save()
-
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
         return Response({
             'message': 'Регистрация успешна. Проверьте вашу почту для подтверждения аккаунта.'
         }, status=status.HTTP_201_CREATED)
