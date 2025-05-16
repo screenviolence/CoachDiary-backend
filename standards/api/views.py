@@ -142,14 +142,25 @@ class StudentStandardsViewSet(viewsets.ViewSet):
     def list(self, request, student_id=None):
         if hasattr(request.user, 'role') and request.user.role == 'teacher':
             student = Student.objects.filter(id=student_id, student_class__class_owner=request.user).first()
+            if not student:
+                raise PermissionDenied("У вас нет прав доступа к этому студенту.")
+
+            # Учитель видит только активные результаты
+            student_standards = models.StudentStandard.objects.filter(student=student)
         elif hasattr(request.user, 'role') and request.user.role == 'student':
             if not hasattr(request.user, 'student') or str(request.user.student.id) != str(student_id):
                 raise PermissionDenied("У вас нет прав доступа к стандартам этого студента.")
-            student = request.user.student
+
+            student = Student.global_objects.filter(id=request.user.student.id).first()
+            if not student:
+                raise PermissionDenied("Студент не найден.")
+
+            if hasattr(student, 'is_deleted') and student.is_deleted:
+                student_standards = models.StudentStandard.global_objects.filter(student=student)
+            else:
+                student_standards = models.StudentStandard.objects.filter(student=student)
         else:
             raise PermissionDenied("У вас нет прав доступа к стандартам студентов.")
-
-        student_standards = models.StudentStandard.objects.filter(student=student)
 
         level_number = request.query_params.get('level_number')
         if level_number:

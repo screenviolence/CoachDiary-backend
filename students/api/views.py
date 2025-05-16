@@ -43,7 +43,7 @@ class StudentViewSet(
         if hasattr(user, 'role') and user.role == 'teacher':
             return models.Student.objects.filter(student_class__class_owner=user)
         elif hasattr(user, 'role') and user.role == 'student' and hasattr(user, 'student'):
-            return models.Student.objects.filter(id=user.student.id)
+            return models.Student.global_objects.filter(id=user.student.id)
 
         return models.Student.objects.none()
 
