@@ -345,7 +345,7 @@ class TeacherImportExportViewSet(viewsets.ViewSet):
         summary="Экспортирует данные преподавателя в формате JSON",
         description="Включает информацию о классах и учениках, которыми управляет преподаватель"
     )
-    @action(detail=False, methods='get')
+    @action(detail=False, methods=['get'])
     def export_data(self, request):
         from students.models import StudentClass, Student
 
@@ -434,7 +434,7 @@ class TeacherImportExportViewSet(viewsets.ViewSet):
         summary="Импортирует данные преподавателя из JSON-файла",
         description="Позволяет восстановить данные о классах, учениках, нормативах и их результатах"
     )
-    @action(detail=False, methods='post')
+    @action(detail=False, methods=['post'])
     def import_data(self, request):
         from students.models import StudentClass, Student
 

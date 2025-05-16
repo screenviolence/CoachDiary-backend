@@ -18,6 +18,7 @@ class UserSerializer(serializers.ModelSerializer):
             "patronymic",
             "full_name",
             "role",
+            "is_email_verified",
         )
 
     def to_representation(self, instance):
