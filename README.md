@@ -38,8 +38,8 @@ DB_PORT=5432
 
 # Настройки электронной почты (при запуске с DJANGO_DEBUG=True не требуются, письма выводятся в консоль)
 EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
-EMAIL_HOST=ваш_хост_smpt
-EMAIL_PORT=ваш_порт_smpt
+EMAIL_HOST=ваш_хост_smtp
+EMAIL_PORT=ваш_порт_smtp
 EMAIL_USE_SSL=True
 EMAIL_HOST_USER=ваш_пользователь_почты
 EMAIL_HOST_PASSWORD=пароль_пользователя_почты
