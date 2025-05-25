@@ -79,7 +79,10 @@ class UserLoginView(viewsets.ViewSet):
 
 class UserViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     serializer_class = UserCreateSerializer
-
+    @extend_schema(
+        summary="Регистрация",
+        description="Создание нового пользователя"
+    )
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)

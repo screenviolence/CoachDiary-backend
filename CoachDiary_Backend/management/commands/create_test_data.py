@@ -52,14 +52,14 @@ class Command(BaseCommand):
 
         users = [
             User.objects.create_user(first_name=f'Аккаунт №{i}', last_name='Тестовый', email=f'user{i}@example.com',
-                                     password='password') for i in range(3)]
+                                     password='password') for i in range(2)]
 
         student_classes = [
             StudentClass.objects.create(number=number, class_name=class_name, class_owner=random.choice(users))
             for number in range(1, 12) for class_name in ['А', 'Б', 'В']]
 
         students = []
-        for _ in range(100):
+        for _ in range(1000):
             gender = random.choice([GenderChoices.MALE, GenderChoices.FEMALE])
             if gender == GenderChoices.MALE:
                 last_name = random.choice(LAST_NAMES)
@@ -116,7 +116,7 @@ class Command(BaseCommand):
                         value = random.randint(1, 50)
                         grade = level.calculate_grade(value)
                     else:
-                        value = random.randint(2, 20)
+                        value = random.randint(2, 5)
                         grade = value
 
                     student_object = StudentStandard(

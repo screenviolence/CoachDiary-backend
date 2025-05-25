@@ -27,6 +27,49 @@ class StandardValueViewSet(
     )
 
     @extend_schema(
+        summary="Список всех нормативов текущего пользователя",
+        description="Отображает список всех нормативов, добавленных текущим пользователем."
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Получение выбранного норматива",
+        description="Отображает информацию о выбранном нормативе по его ID."
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Полное обновление норматива",
+        description="Обновляет все поля норматива, включая уровни и их значения."
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Частичное обновление норматива",
+        description="Обновляет только указанные поля норматива. Уровни не обновляются, если не указаны."
+    )
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Удаление норматива",
+        description="Удаляет норматив по его ID. Удаление уровней норматива не предусмотрено в этом методе."
+    )
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Создание нового норматива",
+        description="Создает новый норматив. Если норматив с таким именем уже существует, добавляет к нему новые уровни вместо создания нового."
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Удаление уровней норматива по номеру класса",
         description="Удаляет уровни норматива для указанного номера класса (для обоих полов)",
         parameters=[
             OpenApiParameter(
@@ -69,10 +112,6 @@ class StandardValueViewSet(
         return models.Standard.objects.filter(who_added_id=user.id)
 
     def perform_create(self, serializer):
-        """
-        Проверяет существование норматива с таким же именем.
-        Если норматив существует, добавляет к нему новые уровни вместо создания нового.
-        """
         standard_data = serializer.validated_data
         standard_name = standard_data.get('name')
 
@@ -238,7 +277,11 @@ class StudentsResultsViewSet(mixins.ListModelMixin, viewsets.ViewSet):
 class StudentResultsCreateOrUpdateViewSet(viewsets.ViewSet):
     permission_classes = (IsTeacher,)
     serializer_class = StudentStandardCreateSerializer
-
+    @extend_schema(
+        summary="Создание или обновление результатов студентов по нормативам",
+        description="Создает или обновляет результаты студентов по нормативам. "
+                    "Ожидается список объектов с полями student_id, standard_id, value, grade и level_number.",
+    )
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         data = request.data

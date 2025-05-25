@@ -1,6 +1,8 @@
 from django.conf import settings
 from datetime import timedelta
 
+from CoachDiary_Backend.settings.general import STATIC_URL
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
@@ -35,5 +37,13 @@ OAUTH2_PROVIDER = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "SCHEMA_PATH_PREFIX": r"/api/"
+    "SCHEMA_PATH_PREFIX": r"/api/",
+    "OAUTH2_FLOWS": ["password"],
+    "OAUTH2_AUTHORIZATION_URL": "/api/o/authorize/",
+    "OAUTH2_TOKEN_URL": "/api/o/token/",
+    "OAUTH2_REFRESH_URL": "/api/o/token/",
+    "OAUTH2_SCOPES": {
+        "read": "Read scope",
+        "write": "Write scope",
+    },
 }
