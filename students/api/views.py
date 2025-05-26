@@ -1,7 +1,7 @@
 from django.http import HttpResponse
 from django.template.loader import render_to_string
+from django_filters import rest_framework as filters
 from drf_spectacular.utils import extend_schema
-
 from rest_framework import mixins, viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -10,12 +10,10 @@ from rest_framework.response import Response
 from common import utils
 from common.permissions import IsTeacher
 from standards.models import StudentStandard, Standard
+from . import filters as custom_filters
 from . import serializers
 from .serializers import StudentSerializer
 from .. import models
-
-from django_filters import rest_framework as filters
-from . import filters as custom_filters
 
 
 class StudentViewSet(

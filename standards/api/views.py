@@ -6,9 +6,10 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from students.models import Student
+
 from common.permissions import IsTeacher
 from standards import models
+from students.models import Student
 from .serializers import StudentResultSerializer, StandardSerializer, StudentStandardCreateSerializer, \
     StudentStandardsResponseSerializer
 
@@ -213,9 +214,8 @@ class StudentStandardsViewSet(viewsets.ViewSet):
 
         filtered_standards = student_standards.filter(level__level_number=level_number)
 
-        numeric_standards = [s for s in filtered_standards if s.standard.has_numeric_value]
-        if numeric_standards:
-            summary_grade = sum(s.grade for s in numeric_standards) / len(numeric_standards)
+        if filtered_standards.exists():
+            summary_grade = sum(s.grade for s in filtered_standards) / len(filtered_standards)
         else:
             summary_grade = 0
 

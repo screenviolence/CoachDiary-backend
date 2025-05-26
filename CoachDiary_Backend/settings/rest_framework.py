@@ -1,7 +1,6 @@
-from django.conf import settings
 from datetime import timedelta
 
-from CoachDiary_Backend.settings.general import STATIC_URL
+from django.conf import settings
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [

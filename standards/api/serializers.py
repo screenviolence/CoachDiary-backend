@@ -2,7 +2,6 @@ from rest_framework import serializers
 
 from students.api.serializers import FullClassNameSerializer
 from students.models import Student
-
 from .. import models
 
 

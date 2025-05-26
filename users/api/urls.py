@@ -1,12 +1,12 @@
 from django.urls import path, include
 from rest_framework import routers
-
-from .views import UserLoginView, UserViewSet, UserProfileViewSet, UserLogoutView, JoinByInvitationView, \
-    VerifyEmailView, PasswordResetViewSet, TeacherImportExportViewSet, ResendConformationEmailView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+
+from .views import UserLoginView, UserViewSet, UserProfileViewSet, UserLogoutView, JoinByInvitationView, \
+    VerifyEmailView, PasswordResetViewSet, TeacherImportExportViewSet, ResendConformationEmailView
 
 user_router = routers.DefaultRouter()
 user_router.register(r'login', UserLoginView, basename='login')

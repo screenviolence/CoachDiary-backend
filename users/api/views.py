@@ -17,12 +17,12 @@ from rest_framework.utils import timezone
 
 from common.permissions import IsTeacher
 from standards.models import Standard, StudentStandard, Level
+from students.api.serializers import InvitationDetailSerializer
 from students.models import Invitation
 from users import models
 from users.api.serializers import UserSerializer, UserCreateSerializer, ChangePasswordSerializer, \
     ChangeUserDetailsSerializer, ChangeUserEmailSerializer, UserLoginSerializer, UserInvitationSerializer, \
     PasswordResetRequestSerializer, PasswordResetConfirmSerializer
-from students.api.serializers import InvitationDetailSerializer
 from users.signals import send_confirmation_email
 from users.utils import send_password_reset_email
 

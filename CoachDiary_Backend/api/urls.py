@@ -1,10 +1,10 @@
 from django.conf import settings
-
-from users.api.urls import urlpatterns as users_api_urlpatterns
-from students.api.urls import urlpatterns as students_api_urlpatterns
-from standards.api.urls import urlpatterns as standards_api_urlpatterns
-from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from django.urls import path, include
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+
+from standards.api.urls import urlpatterns as standards_api_urlpatterns
+from students.api.urls import urlpatterns as students_api_urlpatterns
+from users.api.urls import urlpatterns as users_api_urlpatterns
 
 urlpatterns = [
     *users_api_urlpatterns,

@@ -1,9 +1,10 @@
-from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
-from django.core.exceptions import ValidationError
-
-from django.utils import timezone
 import datetime
+
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db import models
+from django.utils import timezone
+
 from common.models import (
     BaseModel,
     GenderChoices, HumanModel,

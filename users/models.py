@@ -2,7 +2,7 @@ from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
                                         PermissionsMixin)
 from django.db import models
 
-from common.models import BaseModel, HumanModel
+from common.models import HumanModel
 
 
 class LowerCaseEmailField(models.EmailField):
