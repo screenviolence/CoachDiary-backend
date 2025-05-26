@@ -197,6 +197,7 @@ class ResendConformationEmailView(viewsets.ViewSet):
             status=status.HTTP_200_OK
         )
 
+
 class PasswordResetViewSet(viewsets.ViewSet):
     permission_classes = (permissions.AllowAny,)
 
@@ -357,7 +358,8 @@ class TeacherImportExportViewSet(viewsets.ViewSet):
         classes = StudentClass.objects.filter(class_owner=user)
 
         export_data = {
-            'classes': []
+            'classes': [],
+            'standards': []
         }
         standards = Standard.objects.filter(who_added=user)
 
@@ -419,11 +421,9 @@ class TeacherImportExportViewSet(viewsets.ViewSet):
                     }
                     student_data['standards_results'].append(result_data)
 
-                class_data['students'].append(student_data)
-
             export_data['classes'].append(class_data)
 
-        filename = f"teacher_data_{user.last_name}_{user.first_name}_{datetime.datetime.now().strftime('%Y%m%d')}.json"
+        filename = "teacher_data.json"
 
         response = HttpResponse(
             json.dumps(export_data, ensure_ascii=False, indent=4),

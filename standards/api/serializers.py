@@ -222,9 +222,8 @@ class StudentStandardCreateSerializer(serializers.ModelSerializer):
         student_standard, created = models.StudentStandard.objects.update_or_create(
             student=validated_data['student'],
             standard=validated_data['standard'],
-            # Условия для поиска записи
+            level=level,
             defaults={
-                'level': level,
                 'value': validated_data['value'],
                 'grade': validated_data['grade'],
             }

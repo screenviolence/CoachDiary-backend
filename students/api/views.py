@@ -81,7 +81,7 @@ class StudentViewSet(
                     "и смотреть свои данные и результаты на момент удаления. "
     )
     def destroy(self, request, *args, **kwargs):
-        response = super().destroy(request, *args, **kwargs)
+        return super().destroy(request, *args, **kwargs)
 
     @extend_schema(
         summary="Создание нового студента",
@@ -97,7 +97,7 @@ class StudentViewSet(
         description="Обновляет информацию о студенте. "
     )
     def update(self, request, *args, **kwargs):
-        response = super().update(request, *args, **kwargs)
+        return super().update(request, *args, **kwargs)
 
     @extend_schema(
         summary="Частичное обновление информации о студенте",
