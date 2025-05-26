@@ -274,3 +274,27 @@ class StudentClassViewSet(
     )
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Переводит все классы на следующий год обучения",
+        description="Переводит все классы текущего пользователя на следующий год обучения. "
+                    "Если класс 11, то он удаляется.",
+    )
+    @action(detail=False, methods=['post'])
+    def promote(self, request, *args, **kwargs):
+        user = request.user
+        classes = models.StudentClass.objects.filter(class_owner=user)
+        updated_classes = []
+        if classes.model.number == 11:
+            models.StudentClass.objects.filter(
+                number=classes.model.number, class_name=classes.model.class_number, class_owner=user
+            ).delete()
+
+        for student_class in classes:
+            student_class.number += 1
+            student_class.save()
+            updated_classes.append(student_class)
+
+        serializer = serializers.StudentClassSerializer(updated_classes, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
