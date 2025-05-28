@@ -6,12 +6,12 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from students.models import Student
+
 from common.permissions import IsTeacher
 from standards import models
+from students.models import Student
 from .serializers import StudentResultSerializer, StandardSerializer, StudentStandardCreateSerializer, \
-    StudentStandardSerializer, StudentStandardsResponseSerializer
-from django.db.models import F
+    StudentStandardsResponseSerializer
 
 
 class StandardValueViewSet(
@@ -28,6 +28,49 @@ class StandardValueViewSet(
     )
 
     @extend_schema(
+        summary="Список всех нормативов текущего пользователя",
+        description="Отображает список всех нормативов, добавленных текущим пользователем."
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Получение выбранного норматива",
+        description="Отображает информацию о выбранном нормативе по его ID."
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Полное обновление норматива",
+        description="Обновляет все поля норматива, включая уровни и их значения."
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Частичное обновление норматива",
+        description="Обновляет только указанные поля норматива. Уровни не обновляются, если не указаны."
+    )
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Удаление норматива",
+        description="Удаляет норматив по его ID. Удаление уровней норматива не предусмотрено в этом методе."
+    )
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Создание нового норматива",
+        description="Создает новый норматив. Если норматив с таким именем уже существует, добавляет к нему новые уровни вместо создания нового."
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Удаление уровней норматива по номеру класса",
         description="Удаляет уровни норматива для указанного номера класса (для обоих полов)",
         parameters=[
             OpenApiParameter(
@@ -70,10 +113,6 @@ class StandardValueViewSet(
         return models.Standard.objects.filter(who_added_id=user.id)
 
     def perform_create(self, serializer):
-        """
-        Проверяет существование норматива с таким же именем.
-        Если норматив существует, добавляет к нему новые уровни вместо создания нового.
-        """
         standard_data = serializer.validated_data
         standard_name = standard_data.get('name')
 
@@ -99,10 +138,33 @@ class StandardValueViewSet(
         else:
             serializer.save(who_added_id=self.request.user.id)
 
+    def perform_update(self, serializer):
+        """
+        Метод обновления норматива для сохранения связей с результатами студентов
+        """
+        with transaction.atomic():
+            instance = self.get_object()
+            old_name = instance.name
+            new_name = serializer.validated_data.get('name', old_name)
+
+            if hasattr(models, 'StudentStandard'):
+                related_records = list(models.StudentStandard.objects.filter(standard=instance))
+            else:
+                related_records = []
+
+            updated_standard = serializer.save()
+
+            for record in related_records:
+                record.standard = updated_standard
+                record.save()
+
+            return updated_standard
+
 
 class StudentStandardsViewSet(viewsets.ViewSet):
     serializer_class = StudentStandardsResponseSerializer
     permission_classes = (IsAuthenticated,)
+
     @extend_schema(
         summary="Результаты ученика по его нормативам",
         description="Отображает результаты ученика по его нормативам",
@@ -118,15 +180,25 @@ class StudentStandardsViewSet(viewsets.ViewSet):
     )
     def list(self, request, student_id=None):
         if hasattr(request.user, 'role') and request.user.role == 'teacher':
-                student = Student.objects.filter(id=student_id, student_class__class_owner=request.user).first()
+            student = Student.objects.filter(id=student_id, student_class__class_owner=request.user).first()
+            if not student:
+                raise PermissionDenied("У вас нет прав доступа к этому студенту.")
+
+            student_standards = models.StudentStandard.objects.filter(student=student)
         elif hasattr(request.user, 'role') and request.user.role == 'student':
             if not hasattr(request.user, 'student') or str(request.user.student.id) != str(student_id):
                 raise PermissionDenied("У вас нет прав доступа к стандартам этого студента.")
-            student = request.user.student
+
+            student = Student.global_objects.filter(id=request.user.student.id).first()
+            if not student:
+                raise PermissionDenied("Студент не найден.")
+
+            if hasattr(student, 'is_deleted') and student.is_deleted:
+                student_standards = models.StudentStandard.global_objects.filter(student=student)
+            else:
+                student_standards = models.StudentStandard.objects.filter(student=student)
         else:
             raise PermissionDenied("У вас нет прав доступа к стандартам студентов.")
-
-        student_standards = models.StudentStandard.objects.filter(student=student)
 
         level_number = request.query_params.get('level_number')
         if level_number:
@@ -142,9 +214,8 @@ class StudentStandardsViewSet(viewsets.ViewSet):
 
         filtered_standards = student_standards.filter(level__level_number=level_number)
 
-        numeric_standards = [s for s in filtered_standards if s.standard.has_numeric_value]
-        if numeric_standards:
-            summary_grade = sum(s.grade for s in numeric_standards) / len(numeric_standards)
+        if filtered_standards.exists():
+            summary_grade = sum(s.grade for s in filtered_standards) / len(filtered_standards)
         else:
             summary_grade = 0
 
@@ -163,8 +234,8 @@ class StudentsResultsViewSet(mixins.ListModelMixin, viewsets.ViewSet):
     serializer_class = StudentResultSerializer
 
     @extend_schema(
-        summary="Результаты учеников из выбранных классов по выбранному нормативу",
-        description="Отображает результаты учеников из выбранного одного или нескольких классов по выбранному нормативу",
+        summary="Результаты учеников из выбранных классов по выбранным нормативам",
+        description="Отображает результаты учеников из выбранного одного или нескольких классов по выбранным нормативам",
         parameters=[
             OpenApiParameter(
                 name='class_id[]',
@@ -174,20 +245,20 @@ class StudentsResultsViewSet(mixins.ListModelMixin, viewsets.ViewSet):
                 required=True
             ),
             OpenApiParameter(
-                name='standard_id',
+                name='standard_id[]',
                 type=OpenApiTypes.INT,
                 location='query',
-                description='Идентификатор норматива, по которому нужно вывести результаты',
+                description='Идентификаторы нормативов, по которым нужно вывести результаты',
                 required=True
             )
         ]
     )
     def list(self, request, *args, **kwargs):
         class_ids = request.query_params.getlist('class_id[]')
-        standard_id = request.query_params.get('standard_id')
+        standard_ids = request.query_params.getlist('standard_id[]')
 
-        if not class_ids or not standard_id:
-            return Response({"detail": "Требуются параметры class_id и standard_id."},
+        if not class_ids or not standard_ids:
+            return Response({"detail": "Требуются параметры class_id[] и standard_id[]."},
                             status=status.HTTP_400_BAD_REQUEST)
 
         students = Student.objects.filter(
@@ -197,17 +268,20 @@ class StudentsResultsViewSet(mixins.ListModelMixin, viewsets.ViewSet):
         serializer = StudentResultSerializer(
             students,
             many=True,
-            context={'standard_id': standard_id}
+            context={'standard_ids': standard_ids}
         )
 
-        response_data = [item for item in serializer.data]
-        return Response(response_data)
+        return Response(serializer.data)
 
 
 class StudentResultsCreateOrUpdateViewSet(viewsets.ViewSet):
     permission_classes = (IsTeacher,)
     serializer_class = StudentStandardCreateSerializer
-
+    @extend_schema(
+        summary="Создание или обновление результатов студентов по нормативам",
+        description="Создает или обновляет результаты студентов по нормативам. "
+                    "Ожидается список объектов с полями student_id, standard_id, value, grade и level_number.",
+    )
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         data = request.data

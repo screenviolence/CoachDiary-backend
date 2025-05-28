@@ -2,7 +2,6 @@ from rest_framework import serializers
 
 from students.api.serializers import FullClassNameSerializer
 from students.models import Student
-
 from .. import models
 
 
@@ -122,19 +121,44 @@ class StudentResultSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        standard_id = self.context.get('standard_id')
-        if standard_id:
-            try:
-                student_standard = instance.standards.get(
-                    standard_id=standard_id,
-                    level__level_number=instance.student_class.number,
-                    level__gender=instance.gender
-                )
-                representation['value'] = student_standard.value
-                representation['grade'] = student_standard.grade
-            except:
-                representation['value'] = None
-                representation['grade'] = None
+        standard_ids = self.context.get('standard_ids', [])
+
+        if standard_ids:
+            values = []
+            grades = []
+            standards_details = []
+
+            for standard_id in standard_ids:
+                try:
+                    student_standard = instance.standards.get(
+                        standard_id=standard_id,
+                        level__level_number=instance.student_class.number,
+                        level__gender=instance.gender
+                    )
+
+                    standard_detail = {
+                        'standard_id': int(standard_id),
+                        'value': student_standard.value,
+                        'grade': student_standard.grade
+                    }
+
+                    if student_standard.value is not None:
+                        values.append(student_standard.value)
+                    if student_standard.grade is not None:
+                        grades.append(student_standard.grade)
+
+                except:
+                    standard_detail = {
+                        'standard_id': int(standard_id),
+                        'value': None,
+                        'grade': None
+                    }
+
+                standards_details.append(standard_detail)
+
+            representation['average_value'] = sum(values) / len(values) if values else None
+            representation['average_grade'] = sum(grades) / len(grades) if grades else None
+            representation['standards_details'] = standards_details
 
         return representation
 
@@ -198,9 +222,8 @@ class StudentStandardCreateSerializer(serializers.ModelSerializer):
         student_standard, created = models.StudentStandard.objects.update_or_create(
             student=validated_data['student'],
             standard=validated_data['standard'],
-            # Условия для поиска записи
+            level=level,
             defaults={
-                'level': level,
                 'value': validated_data['value'],
                 'grade': validated_data['grade'],
             }

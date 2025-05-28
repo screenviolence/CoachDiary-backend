@@ -1,26 +1,19 @@
-import base64
-
-import qrcode
-from io import BytesIO
-
 from django.http import HttpResponse
 from django.template.loader import render_to_string
-
+from django_filters import rest_framework as filters
+from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
-from xhtml2pdf import pisa
 
 from common import utils
-from common.permissions import IsTeacher, IsStudent
+from common.permissions import IsTeacher
 from standards.models import StudentStandard, Standard
+from . import filters as custom_filters
 from . import serializers
 from .serializers import StudentSerializer
 from .. import models
-
-from django_filters import rest_framework as filters
-from . import filters as custom_filters
 
 
 class StudentViewSet(
@@ -43,10 +36,23 @@ class StudentViewSet(
         if hasattr(user, 'role') and user.role == 'teacher':
             return models.Student.objects.filter(student_class__class_owner=user)
         elif hasattr(user, 'role') and user.role == 'student' and hasattr(user, 'student'):
-            return models.Student.objects.filter(id=user.student.id)
-
+            return models.Student.global_objects.filter(id=user.student.id)
         return models.Student.objects.none()
 
+    @extend_schema(
+        summary="Получение списка студентов",
+        description="Возвращает список студентов, доступных для текущего пользователя. "
+                    "Учителя видят всех студентов в своих классах, студенты видят только себя.",
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Получение информации о студенте",
+        description="Возвращает информацию о конкретном студенте. "
+                    "Учителя могут видеть информацию о студентах в своих классах, "
+                    "студенты видят только себя.",
+    )
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
 
@@ -66,11 +72,53 @@ class StudentViewSet(
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
+    @extend_schema(
+        summary="Удаление студента",
+        description="Удаляет студента из базы данных. "
+                    "Учителя могут удалять студентов в своих классах, "
+                    "студенты не могут удалять себя. "
+                    "Если у студента был аккаунт, то он всё равно сможет входить в систему "
+                    "и смотреть свои данные и результаты на момент удаления. "
+    )
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Создание нового студента",
+        description="Создаёт нового студента в базе данных. "
+                    "Учителя могут создавать студентов в своих классах, "
+                    "студенты не могут создавать себя.",
+    )
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Обновление информации о студенте",
+        description="Обновляет информацию о студенте. "
+    )
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Частичное обновление информации о студенте",
+        description="Частично обновляет информацию о студенте. "
+                    "Позволяет обновлять только некоторые поля.",
+    )
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Генерация PDF с QR-кодами для студентов класса",
+        description="Генерирует PDF-файл, содержащий QR-коды для каждого студента в классе. "
+                    "QR-коды содержат ссылки на приглашения для регистрации в роли обучающегося.",
+    )
     @action(detail=False, methods=['get'])
     def generate_qr_codes_pdf(self, request):
-        """
-        Генерирует PDF с QR-кодами для ссылок-приглашений выбранного класса.
-        """
+        import base64
+        import qrcode
+        from io import BytesIO
+        from xhtml2pdf import pisa
+
         class_id = request.query_params.get('class_id')
         if not class_id:
             return Response(
@@ -146,35 +194,39 @@ class StudentViewSet(
 
         return response
 
+    @extend_schema(
+        summary="Получение результатов студентов по нормативу/нормативам для выбранных классов",
+        description="Возвращает результаты выполнения нормативов для студентов в указанных классах. "
+                    "Требуется передать class_id[] и standard_id в параметрах запроса.",
+    )
+    @action(detail=False, methods=['get'])
+    def results(self, request, *args, **kwargs):
+        class_ids = request.query_params.getlist('class_id[]')
+        standard_id = request.query_params.get('standard_id')
 
-@action(detail=False, methods=['get'])
-def results(self, request, *args, **kwargs):
-    class_ids = request.query_params.getlist('class_id[]')
-    standard_id = request.query_params.get('standard_id')
+        if not class_ids or not standard_id:
+            return Response({"error": "Требуются class_id[] and standard_id"}, status=status.HTTP_400_BAD_REQUEST)
 
-    if not class_ids or not standard_id:
-        return Response({"error": "Требуются class_id[] and standard_id"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            standard = Standard.objects.get(id=standard_id)
+        except Standard.DoesNotExist:
+            return Response({"error": "Норматив не найден."}, status=status.HTTP_404_NOT_FOUND)
 
-    try:
-        standard = Standard.objects.get(id=standard_id)
-    except Standard.DoesNotExist:
-        return Response({"error": "Норматив не найден."}, status=status.HTTP_404_NOT_FOUND)
+        students = models.Student.objects.filter(student_class__id__in=class_ids,
+                                                 student_class__class_owner=request.user)
+        resulting = StudentStandard.objects.filter(student__in=students, standard=standard)
 
-    students = models.Student.objects.filter(student_class__id__in=class_ids,
-                                             student_class__class_owner=request.user)
-    resulting = StudentStandard.objects.filter(student__in=students, standard=standard)
+        response_data = []
+        for result in resulting:
+            student_data = StudentSerializer(result.student).data
+            result_data = {
+                "value": result.value,
+                "grade": result.grade
+            }
+            student_data.update(result_data)
+            response_data.append(student_data)
 
-    response_data = []
-    for result in resulting:
-        student_data = StudentSerializer(result.student).data
-        result_data = {
-            "value": result.value,
-            "grade": result.grade
-        }
-        student_data.update(result_data)
-        response_data.append(student_data)
-
-    return Response(response_data, status=status.HTTP_200_OK)
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 class StudentClassViewSet(
@@ -198,3 +250,51 @@ class StudentClassViewSet(
         if obj.class_owner != self.request.user:
             raise PermissionDenied("У вас нет прав доступа к этому классу.")
         return obj
+
+    @extend_schema(
+        summary="Получение списка классов",
+        description="Возвращает список классов, доступных для текущего пользователя. "
+                    "Учителя видят только свои классы.",
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Получение информации о классе",
+        description="Возвращает информацию о конкретном классе. "
+                    "Учителя могут видеть информацию только о своих классах.",
+    )
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Удаление класса",
+        description="Удаляет класс из базы данных вместе с его студентами. "
+                    "Учителя могут удалять только свои классы.",
+    )
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Переводит все классы на следующий год обучения",
+        description="Переводит все классы текущего пользователя на следующий год обучения. "
+                    "Если класс 11, то он удаляется.",
+    )
+    @action(detail=False, methods=['post'])
+    def promote(self, request, *args, **kwargs):
+        user = request.user
+        classes = models.StudentClass.objects.filter(class_owner=user)
+        updated_classes = []
+        if classes.model.number == 11:
+            models.StudentClass.objects.filter(
+                number=classes.model.number, class_name=classes.model.class_number, class_owner=user
+            ).delete()
+
+        for student_class in classes:
+            student_class.number += 1
+            student_class.save()
+            updated_classes.append(student_class)
+
+        serializer = serializers.StudentClassSerializer(updated_classes, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)

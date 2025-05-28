@@ -1,8 +1,10 @@
-from django_filters import rest_framework as filters
+from datetime import datetime
+
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db.models import Q
 from django.db.models.functions import ExtractYear
-from datetime import datetime
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django_filters import rest_framework as filters
+
 from ..models import Student
 
 
@@ -14,6 +16,11 @@ class StudentFilter(filters.FilterSet):
     - классу обучения (student_class)
     - диапазону годов рождения (birth_year_min, birth_year_max)
     """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.has_patronymic = hasattr(Student, 'patronymic')
+
     gender = filters.CharFilter(field_name="gender", lookup_expr="iexact")
     birth_year_min = filters.NumberFilter(method='filter_birth_year_min',
                                           validators=[
@@ -26,10 +33,12 @@ class StudentFilter(filters.FilterSet):
                                               MaxValueValidator(datetime.now().year)
                                           ])
     student_class = filters.CharFilter(method='filter_student_class')
+    full_name = filters.CharFilter(method='filter_full_name')
 
     class Meta:
         model = Student
-        fields = ['gender', 'student_class', 'birth_year_min', 'birth_year_max']
+        fields = ['gender', 'student_class', 'birth_year_min', 'birth_year_max', 'full_name']
+        ordering = ['last_name', 'first_name', 'patronymic']
 
     def filter_birth_year_min(self, queryset, name, value):
         """Фильтрация по минимальному году рождения."""
@@ -63,5 +72,31 @@ class StudentFilter(filters.FilterSet):
                 query |= Q(student_class__number=number, student_class__class_name=class_letter)
             else:
                 query |= Q(student_class__number=class_value)
+
+        return queryset.filter(query)
+
+    def filter_full_name(self, queryset, name, value):
+        """
+        Фильтрация по ФИО.
+        Поддерживает:
+        - Поиск по любому количеству слов
+        - Частичное совпадение
+        - Нечувствительность к порядку слов
+        """
+        if not value:
+            return queryset
+
+        terms = [term.strip() for term in value.split() if term.strip()]
+        if not terms:
+            return queryset
+
+        query = Q()
+
+        for term in terms:
+            term_query = (Q(first_name__icontains=term) |
+                          Q(last_name__icontains=term))
+            if self.has_patronymic:
+                term_query |= Q(patronymic__icontains=term)
+            query &= term_query
 
         return queryset.filter(query)

@@ -2,11 +2,10 @@ import logging
 
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db import models
 from django.utils import timezone
 
 from common.models import AbstractLevel, AbstractStandard, BaseModel
-from django.db import models
-
 from users.models import User
 
 
@@ -142,6 +141,7 @@ class StudentStandard(BaseModel):
                 level_number=student_class_number,
                 gender=self.student.gender,
             )
+
         except Level.DoesNotExist:
             logging.warning(
                 f"Уровень для норматива '{self.standard.name}', класса {student_class_number} "

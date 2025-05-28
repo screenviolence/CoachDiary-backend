@@ -101,42 +101,24 @@ class StudentSerializer(serializers.ModelSerializer):
         return class_instance
 
 
-class StudentInvitationSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    first_name = serializers.CharField()
-    last_name = serializers.CharField()
-    patronymic = serializers.CharField(allow_blank=True)
+class StudentInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Student
+        fields = ('id', 'first_name', 'last_name', 'patronymic')
+
+
+class InvitationInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Invitation
+        fields = ('invite_code', 'is_used')
 
 
 class InvitationDetailSerializer(serializers.ModelSerializer):
-    invitation = serializers.SerializerMethodField()
-    student = serializers.SerializerMethodField()
-    class_info = serializers.SerializerMethodField()
+    invitation = InvitationInfoSerializer(source='*')
+    student = StudentInfoSerializer()
+    class_info = FullClassNameSerializer(source='student.student_class')
 
     class Meta:
         model = models.Invitation
         fields = ('invitation', 'student', 'class_info')
-
-    def get_invitation(self, obj):
-        return {
-            'code': obj.invite_code,
-            'is_used': obj.is_used
-        }
-
-    def get_student(self, obj):
-        student = obj.student
-        return {
-            'id': student.id,
-            'first_name': student.first_name,
-            'last_name': student.last_name,
-            'patronymic': student.patronymic or '',
-        }
-
-    def get_class_info(self, obj):
-        student_class = obj.student.student_class
-        return {
-            'id': student_class.id,
-            'number': student_class.number,
-            'class_name': student_class.class_name
-        }
 

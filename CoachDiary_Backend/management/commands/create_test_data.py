@@ -2,24 +2,46 @@ import datetime
 import random
 import time
 
-from django.core.management.base import BaseCommand
 from django.core import management
+from django.core.management.base import BaseCommand
 
 from common.models import GenderChoices
-from users.models import User
 from standards.models import Standard, Level, StudentStandard
 from students.models import Student, StudentClass
+from users.models import User
 
-FIRST_NAMES = ["Иван", "Петр", "Алексей", "Дмитрий", "Николай", "Сергей", "Антон", "Максим", "Егор", "Владимир"]
-LAST_NAMES = ["Иванов", "Петров", "Сидоров", "Кузнецов", "Смирнов", "Попов", "Васильев", "Зайцев", "Морозов", "Козлов"]
-PATRONYMICS = ["Алексеевич", "Иванович", "Петрович", "Николаевич", "Дмитриевич", "Сергеевич", "Анатольевич",
-               "Егорович", "Владимирович", "Максимович"]
-FEMALE_FIRST_NAMES = ["Анна", "Мария", "Екатерина", "Дарья", "Ольга", "Наталья", "Татьяна", "Виктория", "Елена",
-                      "Жанна"]
-FEMALE_LAST_NAMES = ["Иванова", "Петрова", "Сидорова", "Кузнецова", "Смирнова", "Попова", "Васильева", "Зайцева",
-                     "Морозова", "Козлова"]
-FEMALE_PATRONYMICS = ["Алексеевна", "Ивановна", "Петровна", "Николаевна", "Дмитриевна", "Сергеевна", "Анатольевна",
-                      "Егоровна", "Владимировна", "Максимовна"]
+FIRST_NAMES = [
+    "Иван", "Петр", "Алексей", "Дмитрий", "Николай", "Сергей", "Антон", "Максим", "Егор", "Владимир",
+    "Александр", "Михаил", "Игорь", "Константин", "Юрий", "Валерий", "Владислав", "Григорий", "Роман", "Денис",
+]
+
+LAST_NAMES = [
+    "Иванов", "Петров", "Сидоров", "Кузнецов", "Смирнов", "Попов", "Васильев", "Зайцев", "Морозов", "Козлов",
+    "Новиков", "Федоров", "Михайлов", "Захаров", "Павлов", "Семёнов", "Голубев", "Виноградов", "Богданов", "Никитин",
+]
+
+PATRONYMICS = [
+    "Алексеевич", "Иванович", "Петрович", "Николаевич", "Дмитриевич", "Сергеевич", "Анатольевич", "Егорович",
+    "Владимирович", "Максимович", "Михайлович", "Юрьевич", "Константинович", "Григорьевич", "Романович",
+    "Денисович", "Игоревич", "Валериевич", "Владиславович", "Александрович",
+]
+
+FEMALE_FIRST_NAMES = [
+    "Анна", "Мария", "Екатерина", "Дарья", "Ольга", "Наталья", "Татьяна", "Виктория", "Елена", "Жанна", "Александра",
+    "Валентина", "Людмила", "Светлана", "Ксения", "Ирина", "Алина", "Полина", "Марина", "Юлия",
+]
+
+FEMALE_LAST_NAMES = [
+    "Иванова", "Петрова", "Сидорова", "Кузнецова", "Смирнова", "Попова", "Васильева", "Зайцева", "Морозова", "Козлова",
+    "Новикова", "Федорова", "Михайлова", "Захарова", "Павлова", "Семёнова", "Голубева", "Виноградова", "Богданова",
+    "Никитина",
+]
+
+FEMALE_PATRONYMICS = [
+    "Алексеевна", "Ивановна", "Петровна", "Николаевна", "Дмитриевна", "Сергеевна", "Анатольевна", "Егоровна",
+    "Владимировна", "Максимовна", "Михайловна", "Юрьевна", "Константиновна", "Григорьевна", "Романовна",
+    "Денисовна", "Игоревна", "Валериевна", "Владиславовна", "Александровна",
+]
 
 NUMERIC_STANDARDS = [
     ["Бег 100 м", "Прыжки в длину", "Отжимания", "Бег 1000 м", ],
@@ -52,14 +74,14 @@ class Command(BaseCommand):
 
         users = [
             User.objects.create_user(first_name=f'Аккаунт №{i}', last_name='Тестовый', email=f'user{i}@example.com',
-                                     password='password') for i in range(3)]
+                                     password='password') for i in range(2)]
 
         student_classes = [
             StudentClass.objects.create(number=number, class_name=class_name, class_owner=random.choice(users))
             for number in range(1, 12) for class_name in ['А', 'Б', 'В']]
 
         students = []
-        for _ in range(100):
+        for _ in range(800):
             gender = random.choice([GenderChoices.MALE, GenderChoices.FEMALE])
             if gender == GenderChoices.MALE:
                 last_name = random.choice(LAST_NAMES)
@@ -84,7 +106,7 @@ class Command(BaseCommand):
             students.append(student)
 
         standards = []
-        for i in range(3):
+        for i in range(2):
             for st in NUMERIC_STANDARDS[i]:
                 standards.append(Standard.objects.create(name=st, who_added=users[i], has_numeric_value=True))
             for st in NON_NUMERIC_STANDARDS[i]:
@@ -112,13 +134,11 @@ class Command(BaseCommand):
                 for standard in user_standards:
                     level = Level.objects.get(standard=standard, level_number=class_number,
                                               gender=student.gender)
-                    print(
-                        f"Стандарт: {standard.name}, Уровень: {level.level_number}, Студента: {student.first_name} {student.last_name}")
                     if standard.has_numeric_value:
                         value = random.randint(1, 50)
                         grade = level.calculate_grade(value)
                     else:
-                        value = random.randint(2, 20)
+                        value = random.randint(2, 5)
                         grade = value
 
                     student_object = StudentStandard(
@@ -129,6 +149,6 @@ class Command(BaseCommand):
                         level=level
                     )
                     student_object.save(preserve_level=True)
-                    print(student_object.level)
+
         elapsed_time = time.time() - start_time
         self.stdout.write(self.style.SUCCESS(f'Тестовые данные успешно созданы за {elapsed_time:.2f} секунд.'))
