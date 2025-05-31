@@ -47,22 +47,22 @@ class Level(AbstractLevel):
 
         if not self.is_lower_better:
             if value >= self.high_value:
-                return '5'
+                return 5
             elif value >= self.middle_value:
-                return '4'
+                return 4
             elif value >= self.low_value:
-                return '3'
+                return 3
             else:
-                return '2'
+                return 2
         else:
             if value <= self.high_value:
-                return '5'
+                return 5
             elif value <= self.middle_value:
-                return '4'
+                return 4
             elif value <= self.low_value:
-                return '3'
+                return 3
             else:
-                return '2'
+                return 2
 
     def clean(self):
         if self.standard.has_numeric_value:
@@ -141,7 +141,6 @@ class StudentStandard(BaseModel):
                 level_number=student_class_number,
                 gender=self.student.gender,
             )
-
         except Level.DoesNotExist:
             logging.warning(
                 f"Уровень для норматива '{self.standard.name}', класса {student_class_number} "
@@ -151,7 +150,7 @@ class StudentStandard(BaseModel):
         except Exception as e:
             logging.error(f"Непредвиденная ошибка при сохранении результата: {e}")
             self.level = None
-
+        self.grade = self.level.calculate_grade(self.value)
         super().save(*args, **kwargs)
 
     def __str__(self):

@@ -209,7 +209,6 @@ class StudentStandardCreateSerializer(serializers.ModelSerializer):
             except models.Level.DoesNotExist:
                 raise serializers.ValidationError("Invalid level for the student's class")
 
-        data['grade'] = models.Level.calculate_grade(level, value)
         data['student'] = student
         data['standard'] = standard
         data['level'] = level

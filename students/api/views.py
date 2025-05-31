@@ -194,39 +194,6 @@ class StudentViewSet(
 
         return response
 
-    @extend_schema(
-        summary="Получение результатов студентов по нормативу/нормативам для выбранных классов",
-        description="Возвращает результаты выполнения нормативов для студентов в указанных классах. "
-                    "Требуется передать class_id[] и standard_id в параметрах запроса.",
-    )
-    @action(detail=False, methods=['get'])
-    def results(self, request, *args, **kwargs):
-        class_ids = request.query_params.getlist('class_id[]')
-        standard_id = request.query_params.get('standard_id')
-
-        if not class_ids or not standard_id:
-            return Response({"error": "Требуются class_id[] and standard_id"}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            standard = Standard.objects.get(id=standard_id)
-        except Standard.DoesNotExist:
-            return Response({"error": "Норматив не найден."}, status=status.HTTP_404_NOT_FOUND)
-
-        students = models.Student.objects.filter(student_class__id__in=class_ids,
-                                                 student_class__class_owner=request.user)
-        resulting = StudentStandard.objects.filter(student__in=students, standard=standard)
-
-        response_data = []
-        for result in resulting:
-            student_data = StudentSerializer(result.student).data
-            result_data = {
-                "value": result.value,
-                "grade": result.grade
-            }
-            student_data.update(result_data)
-            response_data.append(student_data)
-
-        return Response(response_data, status=status.HTTP_200_OK)
 
 
 class StudentClassViewSet(

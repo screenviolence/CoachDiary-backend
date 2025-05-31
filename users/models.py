@@ -22,7 +22,7 @@ class UserManager(BaseUserManager):
     """Custom user manager which provides the correct creation of superuser."""
 
     def build_user(self, email: str, password: str, first_name: str, last_name: str, patronymic: str = None,
-                   role: str = None) -> "User":
+                   role: str = None, is_test_data=False) -> "User":
         if email is None:
             raise TypeError("Нужно указать эл. почту")
 
@@ -35,8 +35,9 @@ class UserManager(BaseUserManager):
         if last_name is None:
             raise TypeError("Нужно указать фамилию")
 
-        validator = ComplexPasswordValidator()
-        validator.validate(password)
+        if not is_test_data:
+            validator = ComplexPasswordValidator()
+            validator.validate(password)
 
         user = self.model(email=self.normalize_email(email), first_name=first_name, last_name=last_name)
 
@@ -51,8 +52,8 @@ class UserManager(BaseUserManager):
         return user
 
     def create_user(self, email: str, password: str, first_name: str, last_name: str, patronymic: str = None,
-                    role: str = None) -> "User":
-        user = self.build_user(email, password, first_name, last_name, patronymic, role)
+                    role: str = None, is_test_data=False) -> "User":
+        user = self.build_user(email, password, first_name, last_name, patronymic, role, is_test_data)
         user.save()
         return user
 
