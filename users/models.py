@@ -3,6 +3,7 @@ from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
 from django.db import models
 
 from common.models import HumanModel
+from common.validators import ComplexPasswordValidator
 
 
 class LowerCaseEmailField(models.EmailField):
@@ -33,6 +34,9 @@ class UserManager(BaseUserManager):
 
         if last_name is None:
             raise TypeError("Нужно указать фамилию")
+
+        validator = ComplexPasswordValidator()
+        validator.validate(password)
 
         user = self.model(email=self.normalize_email(email), first_name=first_name, last_name=last_name)
 
