@@ -11,6 +11,8 @@ def send_verification_email(user):
     context = {
         'username': user.full_name,
         'verification_url': f"{settings.SITE_URL}/verify-email/{user.verification_token}/",
+        'service_url': settings.SITE_URL,
+        'logo_url': f"{settings.SITE_URL}/logo.jpg",
     }
 
     html_message = render_to_string('verification_email.html', context)
@@ -34,7 +36,9 @@ def send_password_reset_email(user):
 
     context = {
         'username': user.full_name,
-        'reset_url': f"{settings.SITE_URL}/reset-password/{user.password_reset_token}/"
+        'reset_url': f"{settings.SITE_URL}/reset-password/{user.password_reset_token}/",
+        'service_url': settings.SITE_URL,
+        'logo_url': f"{settings.SITE_URL}/logo.jpg",
     }
 
     html_message = render_to_string('change_password_email.html', context)
