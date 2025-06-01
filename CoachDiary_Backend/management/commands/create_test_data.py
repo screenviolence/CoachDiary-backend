@@ -4,6 +4,7 @@ import time
 
 from django.core import management
 from django.core.management.base import BaseCommand
+from django.db import transaction
 
 from common.models import GenderChoices
 from standards.models import Standard, Level, StudentStandard
@@ -72,83 +73,84 @@ class Command(BaseCommand):
 
         start_time = time.time()
 
-        users = [
-            User.objects.create_user(first_name=f'Аккаунт №{i}', last_name='Тестовый', email=f'user{i}@example.com',
-                                     password='password') for i in range(2)]
+        with transaction.atomic():
+            users = [
+                User.objects.create_user(first_name=f'Аккаунт №{i}', last_name='Тестовый', email=f'user{i}@example.com',
+                                         password='password', is_test_data=True) for i in range(2)]
 
-        student_classes = [
-            StudentClass.objects.create(number=number, class_name=class_name, class_owner=random.choice(users))
-            for number in range(1, 12) for class_name in ['А', 'Б', 'В']]
+            student_classes = [
+                StudentClass.objects.create(number=number, class_name=class_name, class_owner=random.choice(users))
+                for number in range(1, 12) for class_name in ['А', 'Б', 'В']]
 
-        students = []
-        for _ in range(800):
-            gender = random.choice([GenderChoices.MALE, GenderChoices.FEMALE])
-            if gender == GenderChoices.MALE:
-                last_name = random.choice(LAST_NAMES)
-                first_name = random.choice(FIRST_NAMES)
-                patronymic = random.choice(PATRONYMICS)
-            else:
-                last_name = random.choice(FEMALE_LAST_NAMES)
-                first_name = random.choice(FEMALE_FIRST_NAMES)
-                patronymic = random.choice(FEMALE_PATRONYMICS)
+            students = []
+            for _ in range(800):
+                gender = random.choice([GenderChoices.MALE, GenderChoices.FEMALE])
+                if gender == GenderChoices.MALE:
+                    last_name = random.choice(LAST_NAMES)
+                    first_name = random.choice(FIRST_NAMES)
+                    patronymic = random.choice(PATRONYMICS)
+                else:
+                    last_name = random.choice(FEMALE_LAST_NAMES)
+                    first_name = random.choice(FEMALE_FIRST_NAMES)
+                    patronymic = random.choice(FEMALE_PATRONYMICS)
 
-            student_class = random.choice(student_classes)
-            student = Student.objects.create(
-                first_name=first_name,
-                last_name=last_name,
-                patronymic=patronymic,
-                student_class=student_class,
-                birthday=datetime.date(datetime.datetime.now().year - student_class.number - 7 + 1,
-                                       random.randint(1, 12),
-                                       random.randint(1, 28)),
-                gender=gender,
-            )
-            students.append(student)
+                student_class = random.choice(student_classes)
+                student = Student.objects.create(
+                    first_name=first_name,
+                    last_name=last_name,
+                    patronymic=patronymic,
+                    student_class=student_class,
+                    birthday=datetime.date(datetime.datetime.now().year - student_class.number - 7 + 1,
+                                           random.randint(1, 12),
+                                           random.randint(1, 28)),
+                    gender=gender,
+                )
+                students.append(student)
 
-        standards = []
-        for i in range(2):
-            for st in NUMERIC_STANDARDS[i]:
-                standards.append(Standard.objects.create(name=st, who_added=users[i], has_numeric_value=True))
-            for st in NON_NUMERIC_STANDARDS[i]:
-                standards.append(Standard.objects.create(name=st, who_added=users[i], has_numeric_value=False))
+            standards = []
+            for i in range(2):
+                for st in NUMERIC_STANDARDS[i]:
+                    standards.append(Standard.objects.create(name=st, who_added=users[i], has_numeric_value=True))
+                for st in NON_NUMERIC_STANDARDS[i]:
+                    standards.append(Standard.objects.create(name=st, who_added=users[i], has_numeric_value=False))
 
-        levels = []
-        for standard in standards:
-            for i in range(1, 12):
-                for gender in [GenderChoices.MALE, GenderChoices.FEMALE]:
-                    level = Level.objects.create(
-                        level_number=i,
-                        low_value=random.randint(1, 10) if standard.has_numeric_value else None,
-                        middle_value=random.randint(10, 20) if standard.has_numeric_value else None,
-                        high_value=random.randint(20, 30) if standard.has_numeric_value else None,
-                        standard=standard,
-                        gender=gender,
-                    )
-                    levels.append(level)
+            levels = []
+            for standard in standards:
+                for i in range(1, 12):
+                    for gender in [GenderChoices.MALE, GenderChoices.FEMALE]:
+                        level = Level.objects.create(
+                            level_number=i,
+                            low_value=random.randint(1, 10) if standard.has_numeric_value else None,
+                            middle_value=random.randint(10, 20) if standard.has_numeric_value else None,
+                            high_value=random.randint(20, 30) if standard.has_numeric_value else None,
+                            standard=standard,
+                            gender=gender,
+                        )
+                        levels.append(level)
 
-        for student in students:
-            user = student.student_class.class_owner
-            user_standards = Standard.objects.filter(who_added=user)
+            for student in students:
+                user = student.student_class.class_owner
+                user_standards = Standard.objects.filter(who_added=user)
 
-            for class_number in range(1, student.student_class.number + 1):
-                for standard in user_standards:
-                    level = Level.objects.get(standard=standard, level_number=class_number,
-                                              gender=student.gender)
-                    if standard.has_numeric_value:
-                        value = random.randint(1, 50)
-                        grade = level.calculate_grade(value)
-                    else:
-                        value = random.randint(2, 5)
-                        grade = value
+                for class_number in range(1, student.student_class.number + 1):
+                    for standard in user_standards:
+                        level = Level.objects.get(standard=standard, level_number=class_number,
+                                                  gender=student.gender)
+                        if standard.has_numeric_value:
+                            value = random.randint(1, 50)
+                            grade = level.calculate_grade(value)
+                        else:
+                            value = random.randint(2, 5)
+                            grade = value
 
-                    student_object = StudentStandard(
-                        student=student,
-                        standard=standard,
-                        value=value,
-                        grade=grade,
-                        level=level
-                    )
-                    student_object.save(preserve_level=True)
+                        student_object = StudentStandard(
+                            student=student,
+                            standard=standard,
+                            value=value,
+                            grade=grade,
+                            level=level
+                        )
+                        student_object.save(preserve_level=True)
 
         elapsed_time = time.time() - start_time
         self.stdout.write(self.style.SUCCESS(f'Тестовые данные успешно созданы за {elapsed_time:.2f} секунд.'))

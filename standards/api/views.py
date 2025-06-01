@@ -292,38 +292,50 @@ class StudentResultsCreateOrUpdateViewSet(viewsets.ViewSet):
         response_data = []
         errors = []
 
+        to_update = []
+
         for entry in data:
             serializer = StudentStandardCreateSerializer(data=entry)
             if serializer.is_valid():
                 validated_data = serializer.validated_data
                 student = validated_data['student']
-                student_id = validated_data['student'].id
+                student_id = student.id
                 standard_id = validated_data['standard'].id
                 level_number = validated_data.get('level_number', student.student_class.number)
+
                 try:
-                    student_result = models.StudentStandard.objects.get(
+                    student_result = models.StudentStandard.objects.select_related('level').get(
                         student_id=student_id, standard_id=standard_id,
                         level__level_number=level_number
                     )
-                    update_serializer = StudentStandardCreateSerializer(
-                        student_result, data=entry, partial=True
-                    )
-                    if update_serializer.is_valid():
-                        update_serializer.save()
+
+                    has_changes = False
+                    changed_fields = []
+
+                    if 'value' in validated_data and validated_data['value'] != student_result.value:
+                        has_changes = True
+                        changed_fields.append('value')
+
+                    if has_changes:
+                        for field in changed_fields:
+                            setattr(student_result, field, validated_data[field])
+                        to_update.append(student_result)
                         response_data.append({
-                            "detail": "Запись результата студента успешно обновлена.",
-                            "data": update_serializer.data
+                            "detail": f"Запись результата студента успешно обновлена. Изменены поля: {', '.join(changed_fields)}",
+                            "data": StudentStandardCreateSerializer(instance=student_result).data
                         })
-                    else:
-                        errors.append(update_serializer.errors)
                 except models.StudentStandard.DoesNotExist:
                     student_result = serializer.save()
                     response_data.append({
                         "detail": "Запись результата студента успешно создана.",
-                        "data": StudentStandardCreateSerializer(student_result).data
+                        "data": StudentStandardCreateSerializer(instance=student_result).data
                     })
             else:
                 errors.append(serializer.errors)
+
+        if to_update:
+            for student_result in to_update:
+                student_result.save()
 
         if errors:
             return Response({"errors": errors}, status=status.HTTP_400_BAD_REQUEST)

@@ -1,6 +1,7 @@
 from django.contrib.auth.hashers import check_password
 from rest_framework import serializers
 
+from common.validators import ComplexPasswordValidator
 from students.models import Invitation
 from .. import models
 
@@ -82,10 +83,15 @@ class ChangePasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(required=True)
     confirm_new_password = serializers.CharField(required=True)
 
+    def validate_new_password(self, value):
+        validator = ComplexPasswordValidator()
+        validator.validate(value)
+        return value
+
     def validate(self, data):
         if data['new_password'] != data['confirm_new_password']:
             raise serializers.ValidationError("Пароли не совпадают.")
-        if not check_password(data['current_password'], self.context['request'].user.password):
+        if not check_password(data.get('current_password'), self.context['request'].user.password):
             raise serializers.ValidationError("Текущий пароль неверный.")
         return data
 

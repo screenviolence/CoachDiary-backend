@@ -112,12 +112,22 @@ class StudentStandardSerializer(serializers.ModelSerializer):
             'level')
 
 
+class StandardDetailSerializer(serializers.Serializer):
+    standard_id = serializers.IntegerField()
+    value = serializers.FloatField(allow_null=True)
+    grade = serializers.IntegerField(allow_null=True)
+
 class StudentResultSerializer(serializers.ModelSerializer):
     student_class = FullClassNameSerializer()
+    average_value = serializers.FloatField(read_only=True, allow_null=True)
+    average_grade = serializers.FloatField(read_only=True, allow_null=True)
+    standards_details = StandardDetailSerializer(many=True, read_only=True)
 
     class Meta:
         model = Student
-        fields = ['id', 'first_name', 'last_name', 'patronymic', 'full_name', 'student_class', 'birthday', 'gender']
+        fields = ['id', 'first_name', 'last_name', 'patronymic', 'full_name',
+                 'student_class', 'birthday', 'gender',
+                 'average_value', 'average_grade', 'standards_details']
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -209,7 +219,6 @@ class StudentStandardCreateSerializer(serializers.ModelSerializer):
             except models.Level.DoesNotExist:
                 raise serializers.ValidationError("Invalid level for the student's class")
 
-        data['grade'] = models.Level.calculate_grade(level, value)
         data['student'] = student
         data['standard'] = standard
         data['level'] = level
