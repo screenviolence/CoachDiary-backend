@@ -6,3 +6,4 @@ from .locale import *  # noqa
 from .middleware import *  # noqa
 from .rest_framework import *  # noqa
 from .auth import *  # noqa
+from .celery import *  # noqa
