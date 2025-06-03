@@ -5,6 +5,8 @@
 
 ![433079695-dbcb3301-9881-4ced-b3f3-3ef03c6fbb42-round-corners](https://github.com/user-attachments/assets/bf4a6265-dc1b-43cd-b7c5-2a95cc311e03)
 
+Legacy-версия этого проекта доступна ![здесь](https://github.com/screenviolence/coachdiary)
+
 ## 🛠️ Стек технологий
 
 - Python 3
