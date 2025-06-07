@@ -42,6 +42,9 @@ class Level(AbstractLevel):
         """
         Рассчитывает оценку на основе полученного значения.
         """
+        if value is None:
+            return None
+
         if not self.standard.has_numeric_value:
             return value
 
@@ -107,10 +110,12 @@ class StudentStandard(BaseModel):
     )
     grade = models.IntegerField(
         verbose_name="Оценка",
-        validators=[MinValueValidator(2), MaxValueValidator(5)]
+        validators=[MinValueValidator(2), MaxValueValidator(5)],
+        null=True,
     )
     value = models.FloatField(
         verbose_name="Значение",
+        null=True,
     )
     level = models.ForeignKey(
         Level,

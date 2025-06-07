@@ -215,7 +215,8 @@ class StudentStandardsViewSet(viewsets.ViewSet):
         filtered_standards = student_standards.filter(level__level_number=level_number)
 
         if filtered_standards.exists():
-            summary_grade = sum(s.grade for s in filtered_standards) / len(filtered_standards)
+            grades_with_values = [s.grade for s in filtered_standards if s.grade is not None]
+            summary_grade = sum(grades_with_values) / len(grades_with_values) if grades_with_values else 0
         else:
             summary_grade = 0
 

@@ -234,7 +234,6 @@ class StudentStandardCreateSerializer(serializers.ModelSerializer):
             level=level,
             defaults={
                 'value': validated_data['value'],
-                'grade': validated_data['grade'],
             }
         )
         return student_standard
