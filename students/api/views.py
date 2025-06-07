@@ -258,6 +258,7 @@ class StudentClassViewSet(
         summary="Переводит все классы на следующий год обучения",
         description="Переводит все классы текущего пользователя на следующий год обучения. "
                     "Если класс 11, то он удаляется.",
+        request=None,
     )
     @action(detail=False, methods=['post'])
     def promote(self, request, *args, **kwargs):
