@@ -36,7 +36,7 @@ services:
       sh -c "python manage.py makemigrations &&
              python manage.py migrate &&
              python manage.py collectstatic --noinput &&
-             gunicorn CoachDiary_Backend.wsgi:application --bind 0.0.0.0:8000"
+             gunicorn CoachDiary_Backend.wsgi:application --bind 0.0.0.0:8000 --reload"
 
   celery_worker:
     build: .

@@ -1,7 +1,8 @@
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django_filters import rest_framework as filters
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 from rest_framework import mixins, viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -111,6 +112,17 @@ class StudentViewSet(
         summary="Генерация PDF с QR-кодами для студентов класса",
         description="Генерирует PDF-файл, содержащий QR-коды для каждого студента в классе. "
                     "QR-коды содержат ссылки на приглашения для регистрации в роли обучающегося.",
+        parameters=[
+            OpenApiParameter(
+                name='class_id',
+                required=True,
+                type=OpenApiTypes.INT,
+                description="ID класса, для которого нужно сгенерировать QR-коды.")
+        ],
+        responses={
+            200: OpenApiResponse
+                (response=OpenApiTypes.BINARY)
+        },
     )
     @action(detail=False, methods=['get'])
     def generate_qr_codes_pdf(self, request):
@@ -161,6 +173,7 @@ class StudentViewSet(
                     qr_image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
 
                     qr_data.append({
+                        'invite_code': student.invitation.invite_code,
                         'initials': student.initials,
                         'invitation_link': invitation_link,
                         'qr_code': qr_image_base64,
@@ -193,7 +206,6 @@ class StudentViewSet(
         response['Content-Disposition'] = f'attachment; filename="qr_codes_class_{class_id}.pdf"'
 
         return response
-
 
 
 class StudentClassViewSet(
