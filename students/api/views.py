@@ -262,18 +262,15 @@ class StudentClassViewSet(
     @action(detail=False, methods=['post'])
     def promote(self, request, *args, **kwargs):
         user = request.user
-        classes = models.StudentClass.objects.filter(class_owner=user)
-        updated_classes = []
-        if classes.model.number == 11:
-            models.StudentClass.objects.filter(
-                number=classes.model.number, class_name=classes.model.class_number, class_owner=user
-            ).delete()
 
-        for student_class in classes:
+        models.StudentClass.objects.filter(class_owner=user, number=11).delete()
+
+        classes_to_update = models.StudentClass.objects.filter(class_owner=user)
+        for student_class in classes_to_update:
             student_class.number += 1
             student_class.save()
-            updated_classes.append(student_class)
+
+        updated_classes = models.StudentClass.objects.filter(class_owner=user)
 
         serializer = serializers.StudentClassSerializer(updated_classes, many=True)
-
         return Response(serializer.data, status=status.HTTP_200_OK)
