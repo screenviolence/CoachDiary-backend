@@ -43,11 +43,12 @@ class FullClassNameSerializer(serializers.ModelSerializer):
 class StudentSerializer(serializers.ModelSerializer):
     student_class = StudentClassSerializer()
     invitation_link = serializers.SerializerMethodField()
+    is_used_invitation = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Student
         fields = ("id", "first_name", "last_name", "patronymic", "full_name", "student_class", "birthday", "gender",
-                  "invitation_link")
+                  "invitation_link", "is_used_invitation")
 
     def get_invitation_link(self, obj):
         try:
@@ -56,6 +57,14 @@ class StudentSerializer(serializers.ModelSerializer):
             return None
         except:
             return None
+
+    def get_is_used_invitation(self, obj):
+        try:
+            if hasattr(obj, 'invitation'):
+                return obj.invitation.is_used
+            return False
+        except:
+            return False
 
     def create(self, validated_data):
         student_class_data = validated_data.pop('student_class')

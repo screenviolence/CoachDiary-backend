@@ -117,7 +117,7 @@ class UserProfileViewSet(viewsets.GenericViewSet):
         summary="Смена пароля пользователя",
         request=ChangePasswordSerializer,
     )
-    @action(detail=False, methods=['put'])
+    @action(detail=False, methods=['patch'])
     def change_password(self, request):
         serializer = ChangePasswordSerializer(data=request.data, context={'request': request})
         if not serializer.is_valid():

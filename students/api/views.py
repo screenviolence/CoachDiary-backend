@@ -1,7 +1,8 @@
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django_filters import rest_framework as filters
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 from rest_framework import mixins, viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
@@ -111,6 +112,17 @@ class StudentViewSet(
         summary="Генерация PDF с QR-кодами для студентов класса",
         description="Генерирует PDF-файл, содержащий QR-коды для каждого студента в классе. "
                     "QR-коды содержат ссылки на приглашения для регистрации в роли обучающегося.",
+        parameters=[
+            OpenApiParameter(
+                name='class_id',
+                required=True,
+                type=OpenApiTypes.INT,
+                description="ID класса, для которого нужно сгенерировать QR-коды.")
+        ],
+        responses={
+            200: OpenApiResponse
+                (response=OpenApiTypes.BINARY)
+        },
     )
     @action(detail=False, methods=['get'])
     def generate_qr_codes_pdf(self, request):
@@ -161,6 +173,7 @@ class StudentViewSet(
                     qr_image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
 
                     qr_data.append({
+                        'invite_code': student.invitation.invite_code,
                         'initials': student.initials,
                         'invitation_link': invitation_link,
                         'qr_code': qr_image_base64,
@@ -193,7 +206,6 @@ class StudentViewSet(
         response['Content-Disposition'] = f'attachment; filename="qr_codes_class_{class_id}.pdf"'
 
         return response
-
 
 
 class StudentClassViewSet(
@@ -246,22 +258,20 @@ class StudentClassViewSet(
         summary="Переводит все классы на следующий год обучения",
         description="Переводит все классы текущего пользователя на следующий год обучения. "
                     "Если класс 11, то он удаляется.",
+        request=None,
     )
     @action(detail=False, methods=['post'])
     def promote(self, request, *args, **kwargs):
         user = request.user
-        classes = models.StudentClass.objects.filter(class_owner=user)
-        updated_classes = []
-        if classes.model.number == 11:
-            models.StudentClass.objects.filter(
-                number=classes.model.number, class_name=classes.model.class_number, class_owner=user
-            ).delete()
 
-        for student_class in classes:
+        models.StudentClass.objects.filter(class_owner=user, number=11).delete()
+
+        classes_to_update = models.StudentClass.objects.filter(class_owner=user)
+        for student_class in classes_to_update:
             student_class.number += 1
             student_class.save()
-            updated_classes.append(student_class)
+
+        updated_classes = models.StudentClass.objects.filter(class_owner=user)
 
         serializer = serializers.StudentClassSerializer(updated_classes, many=True)
-
         return Response(serializer.data, status=status.HTTP_200_OK)
