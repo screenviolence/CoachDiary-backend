@@ -108,7 +108,6 @@ class Command(BaseCommand):
                 ))
             students = Student.objects.bulk_create(student_objects)
 
-            # Создаем приглашения для студентов
             invitation_objects = []
             for student in students:
                 invite_code = ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=8))

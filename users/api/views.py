@@ -840,7 +840,6 @@ class TeacherImportExportViewSet(viewsets.ViewSet):
 
         df = pd.DataFrame(data, columns=columns)
         df = df.replace([float('inf'), -float('inf'), pd.NA, pd.NaT], None)
-        df = df.where(pd.notna(df), None)
 
         df.to_excel(writer, sheet_name="Итоговые результаты", index=False)
 
