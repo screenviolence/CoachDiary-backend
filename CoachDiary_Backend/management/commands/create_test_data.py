@@ -8,7 +8,7 @@ from django.db import transaction
 
 from common.models import GenderChoices
 from standards.models import Standard, Level, StudentStandard
-from students.models import Student, StudentClass
+from students.models import Student, StudentClass, Invitation
 from users.models import User
 
 FIRST_NAMES = [
@@ -61,7 +61,6 @@ class Command(BaseCommand):
     help = "Создаёт тестовые данные"
 
     def handle(self, *args, **kwargs):
-
         confirm = input(
             f"Вы уверены, что хотите наполнить базу данных тестовыми данными? ВСЕ ДАННЫЕ В ТЕКУЩЕЙ БАЗЕ ДАННЫХ БУДУТ УДАЛЕНЫ! [y/N]: ")
         if confirm.lower() != 'y':
@@ -78,11 +77,13 @@ class Command(BaseCommand):
                 User.objects.create_user(first_name=f'Аккаунт №{i}', last_name='Тестовый', email=f'user{i}@example.com',
                                          password='password', is_test_data=True) for i in range(2)]
 
-            student_classes = [
-                StudentClass.objects.create(number=number, class_name=class_name, class_owner=random.choice(users))
-                for number in range(1, 12) for class_name in ['А', 'Б', 'В']]
+            student_class_objects = [
+                StudentClass(number=number, class_name=class_name, class_owner=random.choice(users))
+                for number in range(1, 12) for class_name in ['А', 'Б', 'В']
+            ]
+            student_classes = StudentClass.objects.bulk_create(student_class_objects)
 
-            students = []
+            student_objects = []
             for _ in range(800):
                 gender = random.choice([GenderChoices.MALE, GenderChoices.FEMALE])
                 if gender == GenderChoices.MALE:
@@ -95,62 +96,85 @@ class Command(BaseCommand):
                     patronymic = random.choice(FEMALE_PATRONYMICS)
 
                 student_class = random.choice(student_classes)
-                student = Student.objects.create(
+                student_objects.append(Student(
                     first_name=first_name,
                     last_name=last_name,
                     patronymic=patronymic,
                     student_class=student_class,
                     birthday=datetime.date(datetime.datetime.now().year - student_class.number - 7 + 1,
-                                           random.randint(1, 12),
-                                           random.randint(1, 28)),
+                                          random.randint(1, 12),
+                                          random.randint(1, 28)),
                     gender=gender,
-                )
-                students.append(student)
+                ))
+            students = Student.objects.bulk_create(student_objects)
 
-            standards = []
+            # Создаем приглашения для студентов
+            invitation_objects = []
+            for student in students:
+                invite_code = ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=8))
+
+                invitation_objects.append(Invitation(
+                    student=student,
+                    invite_code=invite_code,
+                    is_used=False,
+                ))
+
+            if invitation_objects:
+                Invitation.objects.bulk_create(invitation_objects, batch_size=1000)
+
+            standard_objects = []
             for i in range(2):
                 for st in NUMERIC_STANDARDS[i]:
-                    standards.append(Standard.objects.create(name=st, who_added=users[i], has_numeric_value=True))
+                    standard_objects.append(Standard(name=st, who_added=users[i], has_numeric_value=True))
                 for st in NON_NUMERIC_STANDARDS[i]:
-                    standards.append(Standard.objects.create(name=st, who_added=users[i], has_numeric_value=False))
+                    standard_objects.append(Standard(name=st, who_added=users[i], has_numeric_value=False))
+            standards = Standard.objects.bulk_create(standard_objects)
 
-            levels = []
+            level_objects = []
             for standard in standards:
                 for i in range(1, 12):
                     for gender in [GenderChoices.MALE, GenderChoices.FEMALE]:
-                        level = Level.objects.create(
+                        level_objects.append(Level(
                             level_number=i,
                             low_value=random.randint(1, 10) if standard.has_numeric_value else None,
                             middle_value=random.randint(10, 20) if standard.has_numeric_value else None,
                             high_value=random.randint(20, 30) if standard.has_numeric_value else None,
                             standard=standard,
                             gender=gender,
-                        )
-                        levels.append(level)
+                        ))
+            levels = Level.objects.bulk_create(level_objects, batch_size=1000)
 
+            level_map = {}
+            for level in Level.objects.all():
+                key = (level.standard_id, level.level_number, level.gender)
+                level_map[key] = level
+
+            student_standard_objects = []
             for student in students:
                 user = student.student_class.class_owner
                 user_standards = Standard.objects.filter(who_added=user)
 
                 for class_number in range(1, student.student_class.number + 1):
                     for standard in user_standards:
-                        level = Level.objects.get(standard=standard, level_number=class_number,
-                                                  gender=student.gender)
-                        if standard.has_numeric_value:
-                            value = random.randint(1, 50)
-                            grade = level.calculate_grade(value)
-                        else:
-                            value = random.randint(2, 5)
-                            grade = value
+                        key = (standard.id, class_number, student.gender)
+                        level = level_map.get(key)
+                        if level:
+                            if standard.has_numeric_value:
+                                value = random.randint(1, 50)
+                                grade = level.calculate_grade(value)
+                            else:
+                                value = random.randint(2, 5)
+                                grade = value
 
-                        student_object = StudentStandard(
-                            student=student,
-                            standard=standard,
-                            value=value,
-                            grade=grade,
-                            level=level
-                        )
-                        student_object.save(preserve_level=True)
+                            student_standard_objects.append(StudentStandard(
+                                student=student,
+                                standard=standard,
+                                value=value,
+                                grade=grade,
+                                level=level
+                            ))
+
+            StudentStandard.objects.bulk_create(student_standard_objects, batch_size=1000)
 
         elapsed_time = time.time() - start_time
         self.stdout.write(self.style.SUCCESS(f'Тестовые данные успешно созданы за {elapsed_time:.2f} секунд.'))
