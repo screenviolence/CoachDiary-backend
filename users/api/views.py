@@ -721,7 +721,7 @@ class TeacherImportExportViewSet(viewsets.ViewSet):
 
         output = io.BytesIO()
 
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        with pd.ExcelWriter(output,engine_kwargs={"options": {"nan_inf_to_errors": True}}, engine='xlsxwriter') as writer:
             formats = create_excel_formats(writer.book)
 
             if include_norms:
@@ -770,6 +770,8 @@ class TeacherImportExportViewSet(viewsets.ViewSet):
             norm_data.append(row)
 
         df_norms = pd.DataFrame(norm_data, columns=columns)
+        df_norms = df_norms.replace([float('inf'), -float('inf'), pd.NA, pd.NaT], None)
+
         df_norms.to_excel(writer, sheet_name="Таблица нормативов", index=False)
 
         worksheet = writer.sheets["Таблица нормативов"]
@@ -826,14 +828,19 @@ class TeacherImportExportViewSet(viewsets.ViewSet):
                         class_grades.append(results_map[key].grade)
 
                 if class_grades:
-                    avg_class_grade = sum(class_grades) / len(class_grades)
-                    row.append(round(avg_class_grade, 1))
+                    try:
+                        avg_class_grade = sum(class_grades) / len(class_grades)
+                        row.append(round(avg_class_grade, 1))
+                    except (OverflowError, ValueError):
+                        row.append(None)
                 else:
                     row.append('')
 
             data.append(row)
 
         df = pd.DataFrame(data, columns=columns)
+        df = df.replace([float('inf'), -float('inf'), pd.NA, pd.NaT], None)
+
         df.to_excel(writer, sheet_name="Итоговые результаты", index=False)
 
         worksheet = writer.sheets["Итоговые результаты"]
@@ -890,7 +897,8 @@ class TeacherImportExportViewSet(viewsets.ViewSet):
             for class_num in range(1, 12):
                 if class_num in student_results:
                     result = student_results[class_num]
-                    row.append(result.value)
+                    value = result.value if result.value not in (float('inf'), -float('inf')) else None
+                    row.append(value)
                     row.append(result.grade)
                 else:
                     row.append(0)
@@ -899,6 +907,8 @@ class TeacherImportExportViewSet(viewsets.ViewSet):
             student_data.append(row)
 
         df_students = pd.DataFrame(student_data, columns=columns)
+        df_students = df_students.replace([float('inf'), -float('inf'), pd.NA, pd.NaT], None)
+
         sheet_name = standard.name[:31]
         df_students.to_excel(writer, sheet_name=sheet_name, index=False)
 
