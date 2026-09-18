@@ -76,7 +76,7 @@ SITE_URL=http://localhost:8000
 docker compose up -d --build
 ```
 
-Применяется `docker-compose.override.yml`: Django запускается через `runserver` с hot-reload и пробросом портов PostgreSQL (`5432`) и Redis (`6379`).
+Применяется `docker-compose.dev.yml`: Django запускается через `runserver` с hot-reload и пробросом портов PostgreSQL (`5432`) и Redis (`6379`).
 
 Приложение будет доступно на http://127.0.0.1:8000.
 

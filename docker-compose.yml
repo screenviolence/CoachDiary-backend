@@ -7,7 +7,7 @@ x-app-env: &app-env
 
 services:
   db:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     restart: always
     volumes:
       - postgres_data:/var/lib/postgresql/data/
@@ -47,8 +47,10 @@ services:
       redis:
         condition: service_healthy
     <<: *app-env
+    ports:
+      - "127.0.0.1:8000:8000"
     volumes:
-      - static_volume:/app/staticfiles
+      - /var/www/coachdiary/static:/app/CoachDiary_Backend/staticfiles
     command: >
       sh -c "python manage.py migrate --noinput &&
              python manage.py collectstatic --noinput &&
@@ -72,28 +74,6 @@ services:
     <<: *app-env
     command: celery -A CoachDiary_Backend worker -l info
 
-  caddy:
-    image: caddy:2-alpine
-    profiles: ["prod"]
-    restart: always
-    depends_on:
-      - web
-    env_file:
-      - ./.env
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - static_volume:/srv/static:ro
-      - ./frontend-dist:/srv/frontend:ro
-      - caddy_data:/data
-      - caddy_config:/config
-
 volumes:
   postgres_data:
   redis_data:
-  static_volume:
-  caddy_data:
-  caddy_config:
