@@ -63,10 +63,19 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         start_time = time.time()
 
+        confirm = input(
+            f"Вы уверены, что хотите наполнить базу данных тестовыми данными? ВСЕ ДАННЫЕ В ТЕКУЩЕЙ БАЗЕ ДАННЫХ БУДУТ УДАЛЕНЫ! [y/N]: ")
+        if confirm.lower() != 'y':
+            self.stdout.write(self.style.WARNING("Операция отменена"))
+            return
+        management.call_command('flush', '--noinput')
+        management.call_command('makemigrations')
+        management.call_command('migrate')
+
         with transaction.atomic():
             users = [
                 User.objects.create_user(first_name=f'Аккаунт №{i}', last_name='Тестовый', email=f'user{i}@example.com',
-                                         password='password', is_test_data=True) for i in range(1, 3)]
+                                         password='password', is_test_data=True) for i in range(2)]
 
             student_class_objects = [
                 StudentClass(number=number, class_name=class_name, class_owner=random.choice(users))
