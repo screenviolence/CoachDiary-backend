@@ -9,8 +9,6 @@ services:
   db:
     image: postgres:17-alpine
     restart: always
-    ports:
-      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     env_file:
@@ -38,7 +36,7 @@ services:
       timeout: 3s
       retries: 5
       start_period: 5s
-
+      
   web:
     build: .
     image: coachdiary-backend:latest
@@ -49,14 +47,6 @@ services:
       redis:
         condition: service_healthy
     <<: *app-env
-    ports:
-      - "127.0.0.1:8000:8000"
-    volumes:
-      - /var/www/coachdiary/static:/app/CoachDiary_Backend/staticfiles
-    command: >
-      sh -c "python manage.py migrate --noinput &&
-             python manage.py collectstatic --noinput &&
-             gunicorn CoachDiary_Backend.wsgi:application --bind 0.0.0.0:8000 --workers 3"
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/', timeout=3).status < 500 else 1)\""]
       interval: 30s
@@ -79,3 +69,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  
