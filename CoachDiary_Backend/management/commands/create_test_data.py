@@ -61,6 +61,8 @@ class Command(BaseCommand):
     help = "Создаёт тестовые данные"
 
     def handle(self, *args, **kwargs):
+        start_time = time.time()
+
         confirm = input(
             f"Вы уверены, что хотите наполнить базу данных тестовыми данными? ВСЕ ДАННЫЕ В ТЕКУЩЕЙ БАЗЕ ДАННЫХ БУДУТ УДАЛЕНЫ! [y/N]: ")
         if confirm.lower() != 'y':
@@ -69,8 +71,6 @@ class Command(BaseCommand):
         management.call_command('flush', '--noinput')
         management.call_command('makemigrations')
         management.call_command('migrate')
-
-        start_time = time.time()
 
         with transaction.atomic():
             users = [

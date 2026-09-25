@@ -27,7 +27,7 @@ pandas = "^2.2.3"
 xlsxwriter = "^3.2.3"
 celery = "^5.5.3"
 redis = "^6.2.0"
-
+numpy = "<2.0"
 
 [build-system]
 requires = ["poetry-core"]

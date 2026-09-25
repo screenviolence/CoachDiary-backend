@@ -1,0 +1,12 @@
+services:
+  web:
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - /var/www/coachdiary/static:/app/CoachDiary_Backend/staticfiles
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn CoachDiary_Backend.wsgi:application
+             --bind 0.0.0.0:8000
+             --workers 3"
